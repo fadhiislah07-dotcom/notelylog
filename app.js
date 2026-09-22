@@ -1,7 +1,7 @@
 /* ============================================================
    NOTELYLOG — app.js
    Single-page study dashboard: state, rendering, PDF book reader,
-   optional Google Sign-In + Firestore cloud sync.
+   optional Google Sign-In + Firestore cloud sync (PDFs stay device-local).
    ============================================================ */
 (function(){
 "use strict";
@@ -120,6 +120,18 @@ if(FIREBASE_READY){
 
 function cloudDocRef(uid){ return fbDb.collection("notelylog_users").doc(uid); }
 
+/* PDFs are stored as base64 and can be large — Firestore caps a document at
+   1MB, and previously PDFs would silently fail to sync, then get wiped out
+   on the next cloud pull. Fix: PDFs (and any trashed PDF) are device-local
+   only and are stripped out of every cloud read/write, so the cloud copy
+   can never overwrite or delete them. */
+function sanitizeForCloud(fullState){
+  const clone = Object.assign({}, fullState);
+  clone.pdfs = [];
+  clone.trash = fullState.trash.filter(t=>t.type!=="pdf");
+  return clone;
+}
+
 async function handleAuthChange(user){
   fbUser = user || null;
   renderAccountWidget();
@@ -127,13 +139,18 @@ async function handleAuthChange(user){
   try{
     const snap = await cloudDocRef(fbUser.uid).get();
     if(snap.exists && snap.data() && snap.data().state){
-      state = mergeWithDefaults(snap.data().state);
+      const localPdfs = state.pdfs;
+      const localPdfTrash = state.trash.filter(t=>t.type==="pdf");
+      const merged = mergeWithDefaults(snap.data().state);
+      merged.pdfs = localPdfs;
+      merged.trash = merged.trash.filter(t=>t.type!=="pdf").concat(localPdfTrash);
+      state = merged;
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
       cloudSynced = true;
       toast("Synced from your account");
       renderView();
     } else {
-      await cloudDocRef(fbUser.uid).set({ state, updatedAt: Date.now() });
+      await cloudDocRef(fbUser.uid).set({ state: sanitizeForCloud(state), updatedAt: Date.now() });
       cloudSynced = true;
       toast("Signed in — your data is now backed up to this account");
     }
@@ -152,7 +169,7 @@ function queueCloudSave(){
   if(!fbUser || !fbDb) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>{
-    cloudDocRef(fbUser.uid).set({state, updatedAt:Date.now()}).catch(()=>{ toast("Sync failed — check your connection"); });
+    cloudDocRef(fbUser.uid).set({state:sanitizeForCloud(state), updatedAt:Date.now()}).catch(()=>{ toast("Sync failed — check your connection"); });
   }, 900);
 }
 function signInWithGoogle(){
@@ -924,7 +941,7 @@ function renderSettings(){
           </div>
         </div>`).join("")}</div>` : `<div class="empty" style="padding:16px;">Trash is empty.</div>`}
       <div class="section-title" style="margin-top:20px;"><h3>Storage</h3></div>
-      <div class="card"><p style="font-size:0.85rem; color:var(--text-soft);">${fbUser? "Your data is backed up to your Google account and cached in this browser's local storage for offline use." : "Notelylog saves everything to this browser's local storage. Sign in with Google (in Settings → Account) to back it up and sync it across devices."}</p></div>
+      <div class="card"><p style="font-size:0.85rem; color:var(--text-soft);">${fbUser? "Your data is backed up to your Google account and cached in this browser's local storage for offline use." : "Notelylog saves everything to this browser's local storage. Sign in with Google (in Settings → Account) to back it up and sync it across devices."} Uploaded PDFs are always kept on this device only and are never backed up or synced, even when signed in.</p></div>
     `;
     return;
   }
