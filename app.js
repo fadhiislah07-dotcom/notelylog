@@ -1,8 +1,8 @@
 /* ============================================================
    NOTELYLOG — app.js
    Single-page study dashboard: state, rendering, PDF book reader.
-   Firebase Auth + Firestore sync lightweight study data (and PDF
-   metadata); actual PDF files live only in this device's IndexedDB.
+   Firebase Auth + Firestore sync lightweight study data; actual PDF
+   files live in this device's IndexedDB; installable as a PWA.
    ============================================================ */
 (function(){
 "use strict";
@@ -71,6 +71,59 @@ function applyTheme(){
   else { root.removeAttribute("data-theme"); }
 }
 applyTheme();
+
+/* ============================================================
+   PWA — installability (Android/Chrome/Edge) + iOS "Add to Home Screen"
+   ============================================================ */
+const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+let deferredInstallPrompt = null;
+function isStandaloneApp(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  refreshInstallSection();
+});
+window.addEventListener("appinstalled", ()=>{
+  deferredInstallPrompt = null;
+  toast("notelylog installed");
+  refreshInstallSection();
+});
+function refreshInstallSection(){
+  const box = document.getElementById("install-section");
+  if(box) box.innerHTML = installSectionHtml();
+  bindInstallSection();
+}
+function installSectionHtml(){
+  if(isStandaloneApp()){
+    return `<p style="font-size:0.85rem; color:var(--text-soft);">notelylog is installed and running as an app on this device.</p>`;
+  }
+  if(deferredInstallPrompt){
+    return `<p style="font-size:0.85rem; color:var(--text-soft); margin-bottom:12px;">Install notelylog for a full-screen, app-like experience with its own icon — no browser bar.</p>
+      <button class="btn secondary" id="install-app-btn">${icon('download')}<span>Install notelylog</span></button>`;
+  }
+  if(isIOSDevice){
+    return `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.6;">To install on iPhone/iPad: tap the Share button ${icon('share')} in Safari, then choose <strong>Add to Home Screen</strong>. notelylog will then open full-screen from your Home Screen, just like an app.</p>`;
+  }
+  return `<p style="font-size:0.85rem; color:var(--text-soft);">Your browser doesn't support one-tap install here — check your browser's menu for an "Install" or "Add to Home Screen" option.</p>`;
+}
+function bindInstallSection(){
+  const btn=document.getElementById("install-app-btn");
+  if(!btn) return;
+  btn.addEventListener("click", async ()=>{
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    refreshInstallSection();
+  });
+}
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+  });
+}
 
 /* ---------- toast ---------- */
 let toastTimer=null;
@@ -387,7 +440,9 @@ const ICONS = {
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
   grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
   more:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
-  flame:'🔥'
+  flame:'🔥',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>'
 };
 function icon(name){ return ICONS[name]||""; }
 
@@ -1020,10 +1075,12 @@ function renderSettings(){
             <button class="pill ${state.settings.theme===v?'active':''}" data-theme-set="${v}" style="flex:1;">${l}</button>`).join("")}
         </div>
       </div>
-    </div>`;
+    </div>
+    <div class="card" style="max-width:420px; margin-top:16px;"><h3 style="font-size:0.95rem; margin-bottom:10px;">Install App</h3><div id="install-section">${installSectionHtml()}</div></div>`;
     box.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
       state.settings.theme=b.dataset.themeSet; applyTheme(); save(); renderSettings();
     }));
+    bindInstallSection();
     return;
   }
   if(settingsTab==="account"){
