@@ -1,7 +1,8 @@
 /* ============================================================
    NOTELYLOG — app.js
-   Single-page study dashboard: state, rendering, PDF book reader,
-   optional Google Sign-In + Firestore cloud sync (PDFs stay device-local).
+   Single-page study dashboard: state, rendering, PDF book reader.
+   Firebase Auth + Firestore sync lightweight study data (and PDF
+   metadata); actual PDF files live only in this device's IndexedDB.
    ============================================================ */
 (function(){
 "use strict";
@@ -120,15 +121,25 @@ if(FIREBASE_READY){
 
 function cloudDocRef(uid){ return fbDb.collection("notelylog_users").doc(uid); }
 
-/* PDFs are stored as base64 and can be large — Firestore caps a document at
-   1MB, and previously PDFs would silently fail to sync, then get wiped out
-   on the next cloud pull. Fix: PDFs (and any trashed PDF) are device-local
-   only and are stripped out of every cloud read/write, so the cloud copy
-   can never overwrite or delete them. */
+/* PDF metadata (filename, size, page count, etc.) syncs to Firestore like
+   everything else — it's tiny. The actual PDF bytes never do — they live
+   only in this device's IndexedDB (see the IndexedDB PDF storage section
+   below) and are never part of `state` at all, so there's nothing heavy
+   to strip here. A defensive strip of any old/legacy fields is kept in
+   case older data is still lying around from a previous version. */
 function sanitizeForCloud(fullState){
   const clone = Object.assign({}, fullState);
-  clone.pdfs = [];
-  clone.trash = fullState.trash.filter(t=>t.type!=="pdf");
+  clone.pdfs = fullState.pdfs.map(p=>{
+    const { localData, data, storagePath, ...meta } = p;
+    return meta;
+  });
+  clone.trash = fullState.trash.map(t=>{
+    if(t.type==="pdf" && t.data){
+      const { localData, data, storagePath, ...meta } = t.data;
+      return {...t, data: meta};
+    }
+    return t;
+  });
   return clone;
 }
 
@@ -139,15 +150,11 @@ async function handleAuthChange(user){
   try{
     const snap = await cloudDocRef(fbUser.uid).get();
     if(snap.exists && snap.data() && snap.data().state){
-      const localPdfs = state.pdfs;
-      const localPdfTrash = state.trash.filter(t=>t.type==="pdf");
-      const merged = mergeWithDefaults(snap.data().state);
-      merged.pdfs = localPdfs;
-      merged.trash = merged.trash.filter(t=>t.type!=="pdf").concat(localPdfTrash);
-      state = merged;
+      state = mergeWithDefaults(snap.data().state);
       localStorage.setItem(STORE_KEY, JSON.stringify(state));
       cloudSynced = true;
       toast("Synced from your account");
+      await refreshLocalPdfIds();
       renderView();
     } else {
       await cloudDocRef(fbUser.uid).set({ state: sanitizeForCloud(state), updatedAt: Date.now() });
@@ -214,6 +221,141 @@ function openAccountModal(){
     <div class="modal-actions"><button class="btn danger" id="account-signout">Sign out</button></div>
   `);
   document.getElementById("account-signout").addEventListener("click", signOutGoogle);
+}
+
+/* ============================================================
+   INDEXEDDB — actual PDF file storage (device-local only)
+   Firestore only ever holds lightweight PDF metadata (filename, size,
+   page count, ids). The real PDF bytes live here, in this browser's
+   IndexedDB, and never touch the network or Firestore at all.
+   ============================================================ */
+const PDF_DB_NAME = "notelylog_files";
+const PDF_DB_VERSION = 1;
+const PDF_STORE = "pdfs";
+let pdfDbPromise = null;
+
+function openNotelylogDB(){
+  if(pdfDbPromise) return pdfDbPromise;
+  pdfDbPromise = new Promise((resolve, reject)=>{
+    if(!window.indexedDB){ reject(new Error("IndexedDB not supported")); return; }
+    const req = indexedDB.open(PDF_DB_NAME, PDF_DB_VERSION);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(PDF_STORE)) db.createObjectStore(PDF_STORE, {keyPath:"id"});
+    };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return pdfDbPromise;
+}
+async function savePdfBlob(id, blob, fileName){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readwrite");
+    tx.objectStore(PDF_STORE).put({id, blob, fileName: fileName||"", mimeType:"application/pdf", size:blob.size, createdAt:Date.now()});
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getPdfBlob(id){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).get(id);
+    req.onsuccess = ()=> resolve(req.result || null);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function hasPdfBlob(id){
+  try{ const rec = await getPdfBlob(id); return !!(rec && rec.blob); }
+  catch(e){ return false; }
+}
+async function deletePdfBlob(id){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readwrite");
+    tx.objectStore(PDF_STORE).delete(id);
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getAllPdfKeys(){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).getAllKeys();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function getAllPdfBlobs(){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).getAll();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+
+/* In-memory index of which PDF ids have a blob on THIS device, so cards
+   and the reader can check availability synchronously without awaiting
+   IndexedDB on every render. Refreshed at startup and kept in sync on
+   every upload/attach/delete. */
+let localPdfIds = new Set();
+async function refreshLocalPdfIds(){
+  try{ localPdfIds = new Set(await getAllPdfKeys()); }
+  catch(e){ localPdfIds = new Set(); }
+}
+
+/* One-time migration: earlier versions of Notelylog stored PDFs as base64
+   text directly inside `state.pdfs` (first fully local, later briefly via
+   Supabase). Move any of those into IndexedDB and strip the heavy field
+   out of state for good — existing PDFs and all other data are preserved. */
+async function migrateLegacyPdfBlobs(){
+  let changed = false;
+  for(const p of state.pdfs){
+    const legacy = p.localData || p.data;
+    if(legacy && !localPdfIds.has(p.id)){
+      try{
+        const blob = base64ToBlob(legacy, "application/pdf");
+        await savePdfBlob(p.id, blob, p.filename);
+        localPdfIds.add(p.id);
+      }catch(e){ console.warn("PDF migration failed for", p.filename, e); }
+    }
+    if("localData" in p){ delete p.localData; changed=true; }
+    if("data" in p){ delete p.data; changed=true; }
+    if("storagePath" in p){ delete p.storagePath; changed=true; }
+  }
+  for(const t of state.trash){
+    if(t.type==="pdf" && t.data){
+      const legacy = t.data.localData || t.data.data;
+      if(legacy && !localPdfIds.has(t.data.id)){
+        try{
+          const blob = base64ToBlob(legacy, "application/pdf");
+          await savePdfBlob(t.data.id, blob, t.data.filename);
+          localPdfIds.add(t.data.id);
+        }catch(e){}
+      }
+      if("localData" in t.data){ delete t.data.localData; changed=true; }
+      if("data" in t.data){ delete t.data.data; changed=true; }
+      if("storagePath" in t.data){ delete t.data.storagePath; changed=true; }
+    }
+  }
+  if(changed) save();
+}
+
+function base64ToBlob(dataUrl, mime){
+  const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes], {type:mime});
+}
+function formatBytes(n){
+  if(!n && n!==0) return "";
+  if(n < 1024*1024) return Math.max(1, Math.round(n/1024))+" KB";
+  return (n/(1024*1024)).toFixed(1)+" MB";
 }
 
 /* ---------- icons ---------- */
@@ -329,7 +471,14 @@ function restoreTrash(trashId){
   save(); toast("Restored"); renderView();
 }
 function purgeTrash(trashId){
-  state.trash = state.trash.filter(t=>t.id!==trashId);
+  const idx = state.trash.findIndex(t=>t.id===trashId);
+  if(idx<0) return;
+  const t = state.trash[idx];
+  if(t.type==="pdf" && t.data && t.data.id){
+    deletePdfBlob(t.data.id).catch(()=>{});
+    localPdfIds.delete(t.data.id);
+  }
+  state.trash.splice(idx,1);
   save(); renderView();
 }
 
@@ -584,10 +733,13 @@ function noteCardHtml(n){
   </div>`;
 }
 function pdfCardHtml(p){
+  const sizeLabel = p.size ? ` · ${formatBytes(p.size)}` : "";
+  const available = localPdfIds.has(p.id);
+  const status = available ? "" : ` · <span style="color:var(--text-faint); font-style:italic;">Not stored on this device</span>`;
   return `<div class="pdf-card hover-row" data-open-pdf="${p.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(p.filename)} in book reader">
     <div class="pdf-thumb">${icon('pdf')}</div>
     <div style="flex:1; min-width:0;"><h4 style="font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.filename)}</h4>
-      <div class="meta-line">${p.numPages||'?'} pages</div>
+      <div class="meta-line">${p.numPages||'?'} pages${sizeLabel}${status}</div>
     </div>
     <div class="row-actions"><button class="icon-btn tiny" data-action="del-pdf" data-id="${p.id}" aria-label="Delete PDF">${icon('trash')}</button></div>
   </div>`;
@@ -941,8 +1093,21 @@ function renderSettings(){
           </div>
         </div>`).join("")}</div>` : `<div class="empty" style="padding:16px;">Trash is empty.</div>`}
       <div class="section-title" style="margin-top:20px;"><h3>Storage</h3></div>
-      <div class="card"><p style="font-size:0.85rem; color:var(--text-soft);">${fbUser? "Your data is backed up to your Google account and cached in this browser's local storage for offline use." : "Notelylog saves everything to this browser's local storage. Sign in with Google (in Settings → Account) to back it up and sync it across devices."} Uploaded PDFs are always kept on this device only and are never backed up or synced, even when signed in.</p></div>
+      <div class="card"><p style="font-size:0.85rem; color:var(--text-soft);">${fbUser? "Your subjects, notes, assignments and progress are backed up to your Google account and cached in this browser for offline use." : "Notelylog saves everything to this browser's local storage. Sign in with Google (in Settings → Account) to back it up and sync it across devices."} Uploaded PDFs are always kept on this device only, in your browser's local file storage — they don't sync to other devices.</p></div>
+      <div class="section-title" style="margin-top:20px;"><h3>Local PDFs</h3></div>
+      <div class="card" id="local-pdf-stats"><p style="font-size:0.85rem; color:var(--text-soft);">Checking…</p></div>
+      <div class="section-title" style="margin-top:20px;"><h3>Backup</h3></div>
+      <div class="card">
+        <p style="font-size:0.85rem; color:var(--text-soft); margin-bottom:14px;">Download everything — your study data and the actual PDF files on this device — as one file you can keep or move to another computer.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn secondary small" id="export-backup-btn">Export Local Backup</button>
+          <button class="btn secondary small" id="import-backup-btn">Import Local Backup</button>
+        </div>
+      </div>
     `;
+    renderLocalPdfStats();
+    document.getElementById("export-backup-btn").addEventListener("click", exportLocalBackup);
+    document.getElementById("import-backup-btn").addEventListener("click", triggerImportBackup);
     return;
   }
   if(settingsTab==="about"){
@@ -954,6 +1119,93 @@ function renderSettings(){
 function trashLabel(t){
   const d=t.data;
   return d.name || d.title || d.filename || d.text || d.chapter || "Item";
+}
+
+/* ============================================================
+   LOCAL PDF STORAGE INFO + BACKUP EXPORT/IMPORT
+   ============================================================ */
+async function renderLocalPdfStats(){
+  const box = document.getElementById("local-pdf-stats");
+  if(!box) return;
+  try{
+    const blobs = await getAllPdfBlobs();
+    const totalBytes = blobs.reduce((sum,b)=>sum+(b.size||0),0);
+    let quotaLine = "";
+    if(navigator.storage && navigator.storage.estimate){
+      try{
+        const est = await navigator.storage.estimate();
+        if(est && est.quota) quotaLine = `<br>${formatBytes(est.usage||0)} of ${formatBytes(est.quota)} browser storage used`;
+      }catch(e){}
+    }
+    box.innerHTML = `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.6;">Local PDFs: ${blobs.length}<br>PDF storage used: ${formatBytes(totalBytes)}<br>Storage location: this device/browser${quotaLine}</p>`;
+  }catch(err){
+    box.innerHTML = `<p style="font-size:0.85rem; color:var(--text-soft);">Couldn't read local PDF storage info.</p>`;
+  }
+}
+
+async function exportLocalBackup(){
+  if(typeof JSZip === "undefined"){ toast("Backup tool didn't load — check your connection and try again"); return; }
+  try{
+    const zip = new JSZip();
+    zip.file("data.json", JSON.stringify({
+      app: "Notelylog",
+      backupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      state: state
+    }, null, 2));
+    const blobs = await getAllPdfBlobs();
+    const pdfsFolder = zip.folder("pdfs");
+    blobs.forEach(rec=> pdfsFolder.file(`${rec.id}.pdf`, rec.blob));
+    const content = await zip.generateAsync({type:"blob"});
+    const url = URL.createObjectURL(content);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `notelylog-backup-${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    toast("Backup downloaded");
+  }catch(err){
+    console.warn("Backup export failed:", err);
+    toast("Couldn't create a backup — please try again");
+  }
+}
+
+function triggerImportBackup(){
+  if(typeof JSZip === "undefined"){ toast("Backup tool didn't load — check your connection and try again"); return; }
+  const input=document.createElement("input");
+  input.type="file"; input.accept=".zip,application/zip";
+  input.onchange = async ()=>{
+    const file=input.files[0]; if(!file) return;
+    try{
+      const zip = await JSZip.loadAsync(file);
+      const dataEntry = zip.file("data.json");
+      if(!dataEntry) throw new Error("missing data.json");
+      const parsed = JSON.parse(await dataEntry.async("string"));
+      if(parsed.app!=="Notelylog" || !parsed.state) throw new Error("not a notelylog backup");
+
+      if(!confirm("Importing this backup will replace your current Notelylog data on this device. This can't be undone. Continue?")) return;
+
+      state = mergeWithDefaults(parsed.state);
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+
+      const pdfEntries = zip.file(/^pdfs\/.*\.pdf$/i);
+      for(const entry of pdfEntries){
+        const id = entry.name.replace(/^pdfs\//i, "").replace(/\.pdf$/i, "");
+        try{
+          const blob = await entry.async("blob");
+          await savePdfBlob(id, blob);
+          localPdfIds.add(id);
+        }catch(e){ console.warn("Couldn't restore PDF", entry.name, e); }
+      }
+      save();
+      toast("Backup restored");
+      renderView();
+    }catch(err){
+      console.warn("Backup import failed:", err);
+      toast("Couldn't import this backup — it may not be a valid Notelylog file");
+    }
+  };
+  input.click();
 }
 
 /* ============================================================
@@ -1193,36 +1445,56 @@ function triggerPdfUpload(subjectId){
   input.type="file"; input.accept="application/pdf";
   input.onchange = async ()=>{
     const file=input.files[0]; if(!file) return;
-    if(file.size > 18*1024*1024){ toast("PDF is quite large — this may slow things down"); }
-    const reader=new FileReader();
-    reader.onload = async ()=>{
-      const dataUrl = reader.result;
-      let numPages=null;
-      try{
-        const doc = await pdfjsLib.getDocument({url:dataUrl}).promise;
-        numPages = doc.numPages;
-      }catch(err){}
-      const sid = subjectId || (currentView==="subject-detail" ? currentParams.id : (state.subjects.filter(inActiveSem)[0]||{}).id);
-      state.pdfs.push({id:uid(), semesterId:state.activeSemesterId, subjectId:sid||null, filename:file.name, data:dataUrl, numPages, uploadedAt:Date.now(), bookmarks:[]});
-      save(); renderView(); toast("PDF uploaded");
-    };
-    reader.readAsDataURL(file);
+    const looksLikePdf = file.type==="application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if(!looksLikePdf){ toast("Please choose a PDF file"); return; }
+
+    const pdfId = uid();
+    const tempUrl = URL.createObjectURL(file);
+    let numPages=null;
+    try{
+      const doc = await pdfjsLib.getDocument({url:tempUrl}).promise;
+      numPages = doc.numPages;
+    }catch(err){}
+    URL.revokeObjectURL(tempUrl);
+
+    try{
+      await savePdfBlob(pdfId, file, file.name);
+    }catch(err){
+      toast("Not enough local storage available for this PDF.");
+      return;
+    }
+    localPdfIds.add(pdfId);
+
+    const sid = subjectId || (currentView==="subject-detail" ? currentParams.id : (state.subjects.filter(inActiveSem)[0]||{}).id);
+    const record = {id:pdfId, semesterId:state.activeSemesterId, subjectId:sid||null, filename:file.name, size:file.size, numPages, uploadedAt:Date.now(), bookmarks:[]};
+    state.pdfs.push(record);
+    save(); renderView(); toast("PDF uploaded");
   };
   input.click();
 }
 
 /* ---- reader state ---- */
-let reader = { pdfId:null, doc:null, spread:0, scale:1, isMobile:false, fullscreen:false };
+let reader = { pdfId:null, doc:null, spread:0, scale:1, isMobile:false, fullscreen:false, objectUrl:null };
 function isMobileView(){ return window.matchMedia("(max-width:760px)").matches; }
 
 async function openReader(pdfId){
   const rec = state.pdfs.find(p=>p.id===pdfId);
   if(!rec) return;
-  reader = { pdfId, doc:null, spread:0, scale:1, isMobile:isMobileView() };
+
+  const available = localPdfIds.has(pdfId) || await hasPdfBlob(pdfId);
+  if(!available){ openMissingPdfModal(rec); return; }
+
+  let blobRecord;
+  try{ blobRecord = await getPdfBlob(pdfId); }catch(err){ blobRecord=null; }
+  if(!blobRecord || !blobRecord.blob){ openMissingPdfModal(rec); return; }
+
+  reader = { pdfId, doc:null, spread:0, scale:1, isMobile:isMobileView(), objectUrl:null };
+  const objectUrl = URL.createObjectURL(blobRecord.blob);
+  reader.objectUrl = objectUrl;
   document.getElementById("reader-root").innerHTML = readerShellHtml(rec);
   document.getElementById("reader-root").style.display="block";
   try{
-    reader.doc = await pdfjsLib.getDocument({url:rec.data}).promise;
+    reader.doc = await pdfjsLib.getDocument({url:objectUrl}).promise;
     rec.numPages = reader.doc.numPages;
     save();
   }catch(err){
@@ -1232,9 +1504,33 @@ async function openReader(pdfId){
   await renderSpread();
   bindReaderEvents(rec);
 }
+function openMissingPdfModal(rec){
+  openModal(`
+    <div class="modal-head"><h3>Not stored on this device</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <p style="font-size:0.88rem; color:var(--text-soft); line-height:1.5; margin-bottom:20px;">${escapeHtml(rec.filename)} was uploaded on another device, so it isn't saved here yet. If you have the file, you can add it to this device.</p>
+    <div class="modal-actions"><button class="btn secondary" id="attach-pdf-btn">Add PDF to this device</button></div>
+  `);
+  document.getElementById("attach-pdf-btn").addEventListener("click", ()=> attachPdfToDevice(rec.id));
+}
+function attachPdfToDevice(pdfId){
+  const input=document.createElement("input");
+  input.type="file"; input.accept="application/pdf";
+  input.onchange = async ()=>{
+    const file=input.files[0]; if(!file) return;
+    try{
+      await savePdfBlob(pdfId, file, file.name);
+      localPdfIds.add(pdfId);
+      closeModal();
+      toast("Added to this device");
+      renderView();
+    }catch(err){ toast("Not enough local storage available for this PDF."); }
+  };
+  input.click();
+}
 function closeReader(){
   document.getElementById("reader-root").innerHTML="";
   document.getElementById("reader-root").style.display="none";
+  if(reader && reader.objectUrl){ URL.revokeObjectURL(reader.objectUrl); reader.objectUrl=null; }
   document.removeEventListener("keydown", readerKeyHandler);
 }
 function readerShellHtml(rec){
@@ -1419,7 +1715,11 @@ function renderView(){
 }
 
 /* ---------- init ---------- */
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
 renderView();
+refreshLocalPdfIds().then(migrateLegacyPdfBlobs).then(renderView).catch(()=>{});
 
 })();
 
