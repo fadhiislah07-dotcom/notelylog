@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>notelylog</title>
+
+<!-- PWA: installable app (Android/Chrome/Edge via manifest + service worker below) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6F8B6A">
+<meta name="description" content="A calm digital study journal for subjects, notes, PDFs, assignments and revision.">
+
+<!-- PWA: iOS Safari doesn't read the manifest for install behavior — these
+     meta tags are what make "Add to Home Screen" open full-screen there -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="notelylog">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
