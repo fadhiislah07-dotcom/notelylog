@@ -1,0 +1,17 @@
+{
+  "name": "notelylog",
+  "short_name": "notelylog",
+  "description": "A calm digital study journal for subjects, notes, PDFs, assignments and revision.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F7F5EC",
+  "theme_color": "#6F8B6A",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
