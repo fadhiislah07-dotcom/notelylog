@@ -5,32 +5,436 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>notelylog</title>
 
-<!-- PWA: installable app (Android/Chrome/Edge via manifest + service worker below) -->
-<link rel="manifest" href="manifest.json">
+<!-- PWA: manifest embedded directly as a data URI (icons included inside
+     it too) so the whole app installs from this one file plus
+     service-worker.js — no separate manifest.json or icon files to keep
+     in sync. This mirrors the approach already proven working in the
+     Duit Kira project. -->
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoibm90ZWx5bG9nIiwic2hvcnRfbmFtZSI6Im5vdGVseWxvZyIsImRlc2NyaXB0aW9uIjoiQSBjYWxtIGRpZ2l0YWwgc3R1ZHkgam91cm5hbCBmb3Igc3ViamVjdHMsIG5vdGVzLCBQREZzLCBhc3NpZ25tZW50cyBhbmQgcmV2aXNpb24uIiwiaWQiOiIuIiwic3RhcnRfdXJsIjoiLiIsInNjb3BlIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwib3JpZW50YXRpb24iOiJhbnkiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI0Y3RjVFQyIsInRoZW1lX2NvbG9yIjoiIzZGOEI2QSIsImljb25zIjpbeyJzcmMiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQU1BQUFBREFDQVlBQUFCUzNHd0hBQUFFeUVsRVFWUjRuTzNiUFhMYlZnQ0ZVVWpqaGJqeUN0SWtSVW90eG8zSHlXZ1ZIanVqUm92aEFseDVCYTY4RTZkSXBCRmxBc1RQQXg3dzdqbFY0bkZFakhJL1BwQ1VicnFkK2ZEcC9jL2ExOEI2SHU0ZmIycGZ3MHRWTDhiWTZicTZVV3ord0ViUGtLMWoyT3pCREo4cHRncGg5UWN4ZkpaWU80VFZ2cmpoVTlKYUlSVC9vb2JQbWtxSGNGdnlpeGsvYXl1OXNTSTFHVDQxbERnTkZwOEF4azh0SmJhM0tBRGpwN2FsRzV3ZGdQR3pGMHUyT0NzQTQyZHY1bTV5Y2dER3oxN04yZWFrQUl5ZnZadTYwZEVCR0Q5SE1XV3Jvd0l3Zm81bTdHYXZCbUQ4SE5XWTdSYjlVUWc0bXNFQVBQdHpkTmMyM0J1QThkT0tvUzI3QlNMYXhRQTgrOU9hdmswN0FZajJTd0NlL1duVnBXMDdBWWgyRm9CbmYxcjNldU5PQUtJOUIrRFpueFF2dCs0RUlKb0FpSGJiZFc1L3lQTzBlU2NBMFFSQU5BRVFUUUJFdS9FQ21HUk9BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJSmdDaUNZQm9BaUNhQUlnbUFLSzlxWDBCSE0vZDl4OW4vMzU2OTdiS2RaUWdBRVo3UGZ6WGYzN0VFTndDVmZiMTlLMzdldnBXK3pLdTZodi8xTCt6TjA2QUNqNS8vUEw4ejcrZi9qejdzNy8vK2F2S05hVVN3SVplRHYvYTM5bFRDRk9lMmUrKy96alVyWkFBVmpabTlOZit1ejNGMEJvQnJHRHU2TWQ4UFRHVUpZQkNTby8rMnVNSW9Rd0JMTFRWOEljZWQrMFlUdS9lam40ZGNLVDcvNjRUd0N5MVJ0L0hMZEo4QWhocGI2UHZzOVl0MHBoVDRHalAvbDBuZ0VGSEdmMGxhNXdLVHdQM294Q05PL0x3THlrZHc1RUgvNW9BL3RmYTZQdDR2WEF1T29DVTBmZnhsbXBnQU9tanZ5VDVWSWdKd1BESFNZdWg2UUNNZnBtRVc2VG1BakQ2OGxvK0ZmeENETkVFUURRQkVFMEFSQk1BMFFSQU5BRVFUUUJFRXdEUm1ndWd0VThxOTZURjcyMXpBY0FVQWlDYUFJZ21BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJSmdDaUNZQm9BaUNhQUlnbUFLSUpnR2hOQnREaWJ5N1YxdXIzdE1rQVlDd0JFRTBBUkJNQTBRUkFOQUVRVFFCRUV3RFJCRUEwQVJCTkFFUVRBTkVFUURRQkVFMEFSQk1BMFFSQXRHWURhUFUzbUdwbytYdlpiQUF3aGdDSUpnQ2lDWUJvQWlDYUFJZ21BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJSmdDaUNZQm9BaUJhMHdHMC9KdE1XMm45ZTloMEFIQ05BSWdtQUtJSmdHZ0NJSm9BaUNZQW9nbUFhQUlnMnB2YUY3QzJvVTh5UDMvOHN1R1Y3RmZybi9ZT2FUNkFJWDMvNDFzTkkzbm9mYUlENkhQa1U4UElweEhBUkh1Snc5RExFRUJCcFcrcGpIeDlBdGpBbUNFYmV4MENxT3lQdTk5cVgwSTBud01RVFFCRUV3RFJCRUEwQVJCTkFFUVRBTkZ1SCs0ZmIycGZCTlR3Y1A5NDR3UWdtZ0NJSmdDaUNZQm90MTMzMzR1QjJoY0NXM3JhdkJPQWFBSWcybk1BYm9OSThYTHJUZ0NpblFYZ0ZLQjFyemZ1QkNEYUx3RTRCV2pWcFcwN0FZaDJNUUNuQUszcDI3UVRnR2k5QVRnRmFNWFFsZ2RQQUJGd2ROYzI3QmFJYUZjRGNBcHdWR08yTytvRUVBRkhNM2F6bzIrQlJNQlJUTm5xcE5jQUltRHZwbTUwOG90Z0ViQlhjN1k1NjEwZ0ViQTNjemM1KzIxUUViQVhTN2E0NkhNQUVWRGIwZzB1L2lCTUJOUlNZbnRGeC92aDAvdWZKYjhlWEZMeVNiZm9qMEk0RFZoYjZZMnRObGluQVNXdDllUzYrak8yRUZoaTdidUt6VzVaaE1BVVc5MU9iMzdQTGdTR2JQMDZzdXFMVmpIUWRYWGZQTm5kdXphaWFOdmUzaW44RjRwZFhWZ21VK3lYQUFBQUFFbEZUa1N1UW1DQyIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmciLCJwdXJwb3NlIjoiYW55In0seyJzcmMiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQWdBQUFBSUFDQVlBQUFEMGVOVDZBQUFPdFVsRVFWUjRuTzNjelpFY1ZRS0YwVlFIaHJEQ0FsWVlJR1BZRUhRSFZoRFFvWTJNa1FHc3hnSldlTUlzUkVrbHFicTZNdXY5MzNPV016Q1JsUjA5OTZ1WEtiM1pHTkl2di8vOGIrOXJBQ2poM1cvdjMvUytCcjdsaDlLSmdRZjRTQ0QwNGFZM1lPd0I5aEVGOWJuQkZSaDhnTElFUVhsdWFBRUdINkF0UVhBL04vQWdvdzh3QmpGd2pKdTJnOUVIR0pzWXVKMGI5UXFqRHpBbk1YQ2RtL01Dd3crd0JpRndtWnR5eHVnRHJFME1mT1pHYklZZklJMFFDQThBd3crUUxUa0VJais0NFFmZ1hHSUlSSDFnd3cvQU5Va2hFUEZCRFQ4QWV5U0V3RVB2QzZqTitBT3dWOEoyTEZzNENUODhBT3BiOVRSZ3VROWwrQUdvWWJVUVdPb1JnUEVIb0piVk5tYUptbG50aHdMQTJGWTREWmorQk1ENEE5RGFDdHN6ZFFDczhBTUFZRTZ6YjlDVVJ4aXozM1FBMWpMakk0SHBUZ0NNUHdDam1YR2JwZ3FBR1c4d0FCbG0yNmdwaml4bXU2a0FaSnZoa2NEd0p3REdINERaekxCZFF3ZkFERGNRQUM0WmZjT0dEWURSYnh3QXZHYmtMUnN5QUVhK1lRQ3d4NmliTmx3QWpIcWpBT0NvRWJkdHFBQVk4UVlCUUFtamJkd3dBVERhalFHQTBrYmF1aUVDWUtRYkFnQTFqYko1M1FOZ2xCc0JBSzJNc0gxZEEyQ0VHd0FBUGZUZXdHNEIwUHVEQTBCdlBiZXdTd0FZZndENHFOY21OZzhBNHc4QVgrcXhqVTBEd1BnRHdHV3RON0paQUJoL0FMaXU1VlkyQ1FEakR3QzNhYldaM2Y4ZUFBQ2d2ZW9CNE5zL0FPelRZanVyQm9EeEI0QmphbTlvdFFBdy9nQnduNXBiNmgwQUFBaFVKUUI4K3dlQU1tcHRhdkVBTVA0QVVGYU5iUzBhQU1ZZkFPb292YkhlQVFDQVFNVUN3TGQvQUtpcjVOWVdDUURqRHdCdGxOcGNqd0FBSU5EZEFlRGJQd0MwVldKN25RQUFRS0M3QXNDM2Z3RG80OTROUGh3QXhoOEErcnBuaXowQ0FJQkFod0xBdDM4QUdNUFJUWFlDQUFDQmRnZUFiLzhBTUpZajIrd0VBQUFDN1FvQTMvNEJZRXg3TjlvSkFBQUV1amtBZlBzSGdMSHQyV29uQUFBUTZLWUE4TzBmQU9adzYyWTdBUUNBUUFJQUFBSzlHZ0NPL3dGZ0xyZHN0eE1BQUFoME5RQjgrd2VBT2IyMjRVNEFBQ0NRQUFDQVFDOEdnT04vQUpqYnRTMTNBZ0FBZ1FRQUFBUzZHQUNPL3dGZ0RTOXR1aE1BQUFna0FBQWcwRGNCNFBnZkFOWnlhZHVkQUFCQUlBRUFBSUVFQUFBRStpSUFQUDhIZ0RWOXZmRk9BQUFna0FBQWdFQUNBQUFDZlFvQXovOEJZRzNuVys4RUFBQUNDUUFBQ0NRQUFDQ1FBQUNBUUEvYjVnVkFBRWh4Mm53bkFBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJSGUrRHNBQUNDUEV3QUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFuM1grd0lBcU8vdDMvKzgrTjk5K09IN1p0ZkJPQVFBd0tLdWpmNUwvNXdZeUNFQUFCWno2L0JmKzNlRndQcThBd0N3a0h2R3Y4Yi9EdU1TQUFDTEtEM2FJbUJ0SGdGQW9MOCsvTy9pZi83VDJ4OGJYd21sMUJycnQzLy80M0hBb3B3QVFKZy9mdjJ6OXlWUVdPMXY2azRDMXVRRUFBTGNPdnJuLzl6VDgyT3R5NkdnVnVQc0pHQTlBZ0FXZHMrMy9kTy9Ld1JnVFFJQUZsUDZpTitwd0xoYUg4MDdCVmlMQUlBRnRIcXVMd1pnSFFJQUp0WDdaVDR4QUhNVEFEQ1ozc04vaWZjRjJ1djFacjdIQU9zUUFEQ0JFVWYvRXFjQ01BOEJBSU9hWmZSZklnWmdiQUlBQmpMNzZMOUVETUI0QkFBTVlOWGh2OFQ3QWpBR0FRQ2RKSTMrSlU0Rm9DOEJBQTJsai81THhBQzBKd0NnTXFPL2p4aTR6WWNmdnUveVJ3SDlFY0IxQ0FDb3hQRGZ6L3NDVUk4QWdJS01maDFPQmFBOEFRQjNNdnB0aVlIUFdqOEdjUHkvRmdFQUJ4ajlNWWdCT0U0QXdBNkdmMXlwN3d1ME9nWHc3WDg5QWdCZVlmVG5rbmdxVURzQ2pQK2FCQUJjWVBUWGtCUUR0U0xBK0s5TEFNQi9qUDdhRW1LZ2RBUVkvN1VKQUtJWi9Vd3J4MENwQ0REKzZ4TUFSREw4bkt6NDh1QnB2SStFZ09IUElRQ0lZZlM1WnNWVGdmTXh2eFlEUmorVEFHQnBScDhqVm84QjJEWUJ3SUtNUGlXdEdBT3diUUtBaFJoK2FsdnhmUUZ5Q1FDbVp2VHB3YWtBS3hBQVRNZm9NeEl4d0t3RUFGTXcrc3hBRERBVEFjRFFERCt6OHI0QW94TUFETWZvc3hLbkFveEtBREFFbzA4Q01jQklCQURkR0gyU2lRRjZFd0EwWi9qaFM5NFhvQWNCUUJOR0gxN25WSUNXQkFEVkdIMDRUZ3hRbXdDZ0tLTVA1WWtCYWhBQUZHSDRvUTN2QzFDS0FPQXdvdy85T0JYZ1hnS0FYWXcrakVjTWNNUkQ3d3NBQU5vVEFBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdEczRtOFpnM0g1L1dRUEFRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFMRGIwL05qNzBzQXZ1TDNrcjBFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQnd5TlB6WSs5TEFQN2o5NUVqQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQWNCaFQ4K1B2UzhCNHZrOTVDZ0JBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FjSmVuNThmZWx3Q3gvUDV4RHdFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBTnp0NmZteDl5VkFITDkzM0VzQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUZQSDAvTmo3RWlDRzN6ZEtFQUFBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQlFERlB6NCs5THdHVzUvZU1VZ1FBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUZBVVUvUGo3MHZBWmJsOTR1U0JBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FVQnhUOCtQdlM4Qmx1UDNpdElFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQlBxdTl3V3dwdGYrMXJJL2Z2MnowWlhBSFB4TmY3UW1BT2ppMnYvWmlRTldaZVFaaVFCZ09FNFBtSldCWnlZQ2dPazRQYUFuSTg4cUJBQkxjWHJBdlF3OEtRUUFVWndlc0cxR0hyWk5BTUFuVGcvV1llRGhkUUlBYmlRUXhtSGc0WDRDQUFyeGVLRXNJdzkxQ1FCb3dPbkJ0d3c4OUNVQVlBQ3JuaDRZZVJpWEFJREJqWHg2WU9CaFhnSUFKbGY3OU1ESXc1b0VBQ3hzNzNnYmU4Z2hBQ0RRVDI5LzdIMEpRR2NQdlM4QUFHaFBBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVlbmozMi9zM3ZTOENBR2puM1cvdjN6Z0JBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDUFN3YlIvL1BHRHZDd0VBNmp0dHZoTUFBQWdrQUFBZ2tBQUFnRUFDQUFBQ2ZRb0FMd0lDd05yT3Q5NEpBQUFFRWdBQUVFZ0FBRUNnTHdMQWV3QUFzS2F2Tjk0SkFBQUVFZ0FBRUVnQUFFQ2did0xBZXdBQXNKWkwyKzRFQUFBQ0NRQUFDSFF4QUR3R0FJQTF2TFRwVGdBQUlKQUFBSUJBTHdhQXh3QUFNTGRyVys0RUFBQUNDUUFBQ0hRMUFEd0dBSUE1dmJiaFRnQUFJTkNyQWVBVUFBRG1jc3QyT3dFQWdFQUNBQUFDM1JRQUhnTUF3Qnh1M1d3bkFBQVE2T1lBY0FvQUFHUGJzOVZPQUFBZzBLNEFjQW9BQUdQYXU5Rk9BQUFnME80QWNBb0FBR001c3MxT0FBQWcwS0VBY0FvQUFHTTR1c2xPQUFBZzBPRUFjQW9BQUgzZHM4VjNuUUNJQUFEbzQ5NE45Z2dBQUFMZEhRQk9BUUNnclJMYjZ3UUFBQUlWQ1FDbkFBRFFScW5OTFhZQ0lBSUFvSzZTVytzUkFBQUVLaG9BVGdFQW9JN1NHMXY4QkVBRUFFQlpOYmExeWlNQUVRQUFaZFRhVk84QUFFQ2dhZ0hnRkFBQTdsTnpTNnVlQUlnQUFEaW05b1pXZndRZ0FnQmdueGJiNlIwQUFBalVKQUNjQWdEQWJWcHRack1UQUJFQUFOZTEzTXFtandCRUFBQmMxbm9qbTc4RElBSUE0RXM5dHJITFM0QWlBQUErNnJXSjNmNFVnQWdBSUYzUExlejZ4d0JGQUFDcGVtOWc5NzhIb1BjTkFJRFdSdGkrN2dHd2JXUGNDQUJvWVpUTkd5SUF0bTJjR3dJQXRZeTBkY01Fd0xhTmRXTUFvS1RSTm02b0FOaTI4VzRRQU54cnhHMGJMZ0MyYmN3YkJRQkhqTHBwUXdiQXRvMTd3d0RnVmlOdjJiQUJzRzFqM3pnQXVHYjBEUnM2QUxadC9Cc0lBRitiWWJ1R3Y4Qnp2L3orODcrOXJ3RUFYakxEOEo4TWZ3SndicVliQzBDVzJUWnFxZ0RZdHZsdU1BRHJtM0dicHJ2Z2N4NEpBTkRUak1OL010MEp3TG1aYnp3QWM1dDlnNllPZ0cyYi93Y0F3SHhXMko3cFA4QTVqd1FBcUdtRjRUK1ovZ1RnM0VvL0dBREdzdHJHTFBWaHpqa05BS0NFMVliL1pNa1BkVTRJQUhERXFzTi9zdFFqZ0V0Vy93RUNVRjdDZGl6L0FjODVEUURnbW9UaFA0bjVvT2VFQUFEbmtvYi9KTzREbnhNQ0FOa1NoLzhrOW9PZkV3SUFXWktIL3lUK0Jwd1RBZ0JyTS95ZnVSRXZFQU1BYXpENmw3a3ByeEFDQUhNeS9OZTVPVHVJQVlDeEdmM2J1VkVIaVFHQU1SajlZOXkwQXNRQVFGdEcvMzV1WUFXQ0FLQXNnMStlRzlxQUlBRFl4K0RYNXdaM0lnb0FQakwyZmJqcGd4SUl3Q29NL0pqK0QrbmRnYU9NV2N4NUFBQUFBRWxGVGtTdVFtQ0MiLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIiwicHVycG9zZSI6ImFueSJ9LHsic3JjIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFnQUFBQUlBQ0FZQUFBRDBlTlQ2QUFBT3RVbEVRVlI0bk8zY3paRWNWUUtGMFZRSGhyRENBbFlZSUdQWUVIUUhWaERRb1kyTWtRR3N4Z0pXZU1Jc1JFa2xxYnE2TXV2OTMzT1dNekNSbFIwOTk2dVhLYjNaR05JdnYvLzhiKzlyQUNqaDNXL3YzL1MrQnI3bGg5S0pnUWY0U0NEMDRhWTNZT3dCOWhFRjlibkJGUmg4Z0xJRVFYbHVhQUVHSDZBdFFYQS9OL0Fnb3c4d0JqRndqSnUyZzlFSEdKc1l1SjBiOVFxakR6QW5NWENkbS9NQ3d3K3dCaUZ3bVp0eXh1Z0RyRTBNZk9aR2JJWWZJSTBRQ0E4QXd3K1FMVGtFSWorNDRRZmdYR0lJUkgxZ3d3L0FOVWtoRVBGQkRUOEFleVNFd0VQdkM2ak4rQU93VjhKMkxGczRDVDg4QU9wYjlUUmd1UTlsK0FHb1liVVFXT29SZ1BFSG9KYlZObWFKbWxudGh3TEEyRlk0RFpqK0JNRDRBOURhQ3RzemRRQ3M4QU1BWUU2emI5Q1VSeGl6MzNRQTFqTGpJNEhwVGdDTVB3Q2ptWEdicGdxQUdXOHdBQmxtMjZncGppeG11NmtBWkp2aGtjRHdKd0RHSDREWnpMQmRRd2ZBRERjUUFDNFpmY09HRFlEUmJ4d0F2R2JrTFJzeUFFYStZUUN3eDZpYk5sd0FqSHFqQU9Db0ViZHRxQUFZOFFZQlFBbWpiZHd3QVREYWpRR0Ewa2JhdWlFQ1lLUWJBZ0ExamJKNTNRTmdsQnNCQUsyTXNIMWRBMkNFR3dBQVBmVGV3RzRCMFB1REEwQnZQYmV3U3dBWWZ3RDRxTmNtTmc4QTR3OEFYK3F4alUwRHdQZ0R3R1d0TjdKWkFCaC9BTGl1NVZZMkNRRGpEd0MzYWJXWjNmOGVBQUNndmVvQjROcy9BT3pUWWp1ckJvRHhCNEJqYW05b3RRQXcvZ0J3bjVwYjZoMEFBQWhVSlFCOCt3ZUFNbXB0YXZFQU1QNEFVRmFOYlMwYUFNWWZBT29vdmJIZUFRQ0FRTVVDd0xkL0FLaXI1TllXQ1FEakR3QnRsTnBjandBQUlORGRBZURiUHdDMFZXSjduUUFBUUtDN0FzQzNmd0RvNDk0TlBod0F4aDhBK3Jwbml6MENBSUJBaHdMQXQzOEFHTVBSVFhZQ0FBQ0JkZ2VBYi84QU1KWWoyK3dFQUFBQzdRb0EzLzRCWUV4N045b0pBQUFFdWprQWZQc0hnTEh0MldvbkFBQVE2S1lBOE8wZkFPWnc2Mlk3QVFDQVFBSUFBQUs5R2dDTy93RmdMcmRzdHhNQUFBaDBOUUI4K3dlQU9iMjI0VTRBQUNDUUFBQ0FRQzhHZ09OL0FKamJ0UzEzQWdBQWdRUUFBQVM2R0FDTy93RmdEUzl0dWhNQUFBZ2tBQUFnMERjQjRQZ2ZBTlp5YWR1ZEFBQkFJQUVBQUlFRUFBQUUraUlBUFA4SGdEVjl2ZkZPQUFBZ2tBQUFnRUFDQUFBQ2ZRb0F6LzhCWUczblcrOEVBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBL2I1Z1ZBQUVoeDJud25BQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUhlK0RzQUFDQ1BFd0FBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBbjNYK3dJQXFPL3QzLys4K045OStPSDdadGZCT0FRQXdLS3VqZjVMLzV3WXlDRUFBQlp6Ni9CZiszZUZ3UHE4QXdDd2tIdkd2OGIvRHVNU0FBQ0xLRDNhSW1CdEhnRkFvTDgrL08vaWYvN1QyeDhiWHdtbDFCcnJ0My8vNDNIQW9wd0FRSmcvZnYyejl5VlFXTzF2Nms0QzF1UUVBQUxjT3Zybi85elQ4Mk90eTZHZ1Z1UHNKR0E5QWdBV2RzKzMvZE8vS3dSZ1RRSUFGbFA2aU4rcHdMaGFIODA3QlZpTEFJQUZ0SHF1THdaZ0hRSUFKdFg3WlQ0eEFITVRBRENaM3NOL2lmY0YydXYxWnI3SEFPc1FBRENCRVVmL0VxY0NNQThCQUlPYVpmUmZJZ1pnYkFJQUJqTDc2TDlFRE1CNEJBQU1ZTlhodjhUN0FqQUdBUUNkSkkzK0pVNEZvQzhCQUEybGovNUx4QUMwSndDZ01xTy9qeGk0elljZnZ1L3lSd0g5RWNCMUNBQ294UERmei9zQ1VJOEFnSUtNZmgxT0JhQThBUUIzTXZwdGlZSFBXajhHY1B5L0ZnRUFCeGo5TVlnQk9FNEF3QTZHZjF5cDd3dTBPZ1h3N1g4OUFnQmVZZlRua25ncVVEc0NqUCthQkFCY1lQVFhrQlFEdFNMQStLOUxBTUIvalA3YUVtS2dkQVFZLzdVSkFLSVovVXdyeDBDcENERCs2eE1BUkRMOG5LejQ4dUJwdkkrRWdPSFBJUUNJWWZTNVpzVlRnZk14dnhZRFJqK1RBR0JwUnA4alZvOEIyRFlCd0lLTVBpV3RHQU93YlFLQWhSaCthbHZ4ZlFGeUNRQ21adlRwd2FrQUt4QUFUTWZvTXhJeHdLd0VBRk13K3N4QUREQVRBY0RRREQrejhyNEFveE1BRE1mb3N4S25Bb3hLQURBRW8wOENNY0JJQkFEZEdIMlNpUUY2RXdBMFovamhTOTRYb0FjQlFCTkdIMTduVklDV0JBRFZHSDA0VGd4UW13Q2dLS01QNVlrQmFoQUFGR0g0b1EzdkMxQ0tBT0F3b3cvOU9CWGdYZ0tBWFl3K2pFY01jTVJEN3dzQUFOb1RBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnRHM0bThaZzNINS9XUVBBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBTERiMC9Oajcwc0F2dUwza3IwRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUJ3eU5QelkrOUxBUDdqOTVFakJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FjQmhUOCtQdlM4QjR2azk1Q2dCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBY0plbjU4ZmVsd0N4L1A1eER3RUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQU56dDZmbXg5eVZBSEw5MzNFc0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFGUEgwL05qN0VpQ0czemRLRUFBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJRREZQejQrOUx3R1c1L2VNVWdRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFGQVVVL1BqNzB2QVpibDk0dVNCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBVUJ4VDgrUHZTOEJsdVAzaXRJRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJQcXU5d1d3cHRmKzFySS9mdjJ6MFpYQUhQeE5mN1FtQU9qaTJ2L1ppUU5XWmVRWmlRQmdPRTRQbUpXQlp5WUNnT2s0UGFBbkk4OHFCQUJMY1hyQXZRdzhLUVFBVVp3ZXNHMUdIclpOQU1BblRnL1dZZURoZFFJQWJpUVF4bUhnNFg0Q0FBcnhlS0VzSXc5MUNRQm93T25CdHd3ODlDVUFZQUNybmg0WWVSaVhBSURCalh4NllPQmhYZ0lBSmxmNzlNREl3NW9FQUN4czczZ2JlOGdoQUNEUVQyOS83SDBKUUdjUHZTOEFBR2hQQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFZW5qMzIvczN2UzhDQUdqbjNXL3YzemdCQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ1BTd2JSLy9QR0R2Q3dFQTZqdHR2aE1BQUFna0FBQWdrQUFBZ0VBQ0FBQUNmUW9BTHdJQ3dOck90OTRKQUFBRUVnQUFFRWdBQUVDZ0x3TEFld0FBc0thdk45NEpBQUFFRWdBQUVFZ0FBRUNnYndMQWV3QUFzSlpMMis0RUFBQUNDUUFBQ0hReEFEd0dBSUExdkxUcFRnQUFJSkFBQUlCQUx3YUF4d0FBTUxkclcrNEVBQUFDQ1FBQUNIUTFBRHdHQUlBNXZiYmhUZ0FBSU5DckFlQVVBQURtY3N0Mk93RUFnRUFDQUFBQzNSUUFIZ01Bd0J4dTNXd25BQUFRNk9ZQWNBb0FBR1BiczlWT0FBQWcwSzRBY0FvQUFHUGF1OUZPQUFBZzBPNEFjQW9BQUdNNXNzMU9BQUFnMEtFQWNBb0FBR000dXNsT0FBQWcwT0VBY0FvQUFIM2RzOFYzblFDSUFBRG80OTROOWdnQUFBTGRIUUJPQVFDZ3JSTGI2d1FBQUFJVkNRQ25BQURRUnFuTkxYWUNJQUlBb0s2U1crc1JBQUFFS2hvQVRnRUFvSTdTRzF2OEJFQUVBRUJaTmJhMXlpTUFFUUFBWmRUYVZPOEFBRUNnYWdIZ0ZBQUE3bE56UzZ1ZUFJZ0FBRGltOW9aV2Z3UWdBZ0JnbnhiYjZSMEFBQWpVSkFDY0FnREFiVnB0WnJNVEFCRUFBTmUxM01xbWp3QkVBQUJjMW5vam03OERJQUlBNEVzOXRySExTNEFpQUFBKzZyV0ozZjRVZ0FnQUlGM1BMZXo2eHdCRkFBQ3BlbTlnOTc4SG9QY05BSURXUnRpKzdnR3diV1BjQ0FCb1laVE5HeUlBdG0yY0d3SUF0WXkwZGNNRXdMYU5kV01Bb0tUUk5tNm9BTmkyOFc0UUFOeHJ4RzBiTGdDMmJjd2JCUUJIakxwcFF3YkF0bzE3d3dEZ1ZpTnYyYkFCc0cxajN6Z0F1R2IwRFJzNkFMWnQvQnNJQUYrYllidUd2OEJ6di96Kzg3Kzlyd0VBWGpMRDhKOE1md0p3YnFZYkMwQ1cyVFpxcWdEWXR2bHVNQURybTNHYnBydmdjeDRKQU5EVGpNTi9NdDBKd0xtWmJ6d0FjNXQ5ZzZZT2dHMmIvd2NBd0h4VzJKN3BQOEE1andRQXFHbUY0VCtaL2dUZzNFby9HQURHc3RyR0xQVmh6amtOQUtDRTFZYi9aTWtQZFU0SUFIREVxc04vc3RRamdFdFcvd0VDVUY3Q2Rpei9BYzg1RFFEZ21vVGhQNG41b09lRUFBRG5rb2IvSk80RG54TUNBTmtTaC84azlvT2ZFd0lBV1pLSC95VCtCcHdUQWdCck0veWZ1UkV2RUFNQWF6RDZsN2twcnhBQ0FITXkvTmU1T1R1SUFZQ3hHZjNidVZFSGlRR0FNUmo5WTl5MEFzUUFRRnRHLzM1dVlBV0NBS0FzZzErZUc5cUFJQURZeCtEWDV3WjNJZ29BUGpMMmZianBneElJd0NvTS9KaitEK25kZ2FPTVdjeDVBQUFBQUVsRlRrU3VRbUNDIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3BuZyIsInB1cnBvc2UiOiJtYXNrYWJsZSJ9XX0=">
 <meta name="theme-color" content="#6F8B6A">
 <meta name="description" content="A calm digital study journal for subjects, notes, PDFs, assignments and revision.">
 
-<!-- PWA: iOS Safari doesn't read the manifest for install behavior — these
-     meta tags are what make "Add to Home Screen" open full-screen there -->
+<!-- iOS Safari ignores the manifest for install behavior — these meta
+     tags are what make "Add to Home Screen" open full-screen there -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="notelylog">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADJElEQVR4nO3bP27TYByAYYN6kE49AQsMjD0MCyocA7XcJwfo1BN06k1gogKRxG7rxM6b55kiK39+cl59cqLP777++PJrgIj3Sw8AcxI0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZNysfQArMv149N/xzZXl0ef47Ws0DzbFvO+42sk6CO53zwM95uHpcfYaSzaU4naJccB3d7cPT/+uPn8z7HvP78tMlOdoGf2d8RTn7d03FNX3+vHp9VfTwt6BlMjnvL6peM+dYJ+pbdGPPa+wn4dQb/AoSIe+yxxTyfoEceMeMoMh4h7c3U56Tp67dfPwyDondYQ8jZW7v0E/Ze1RrzLnHGPrdKnsDoPg6BPLuJd5oh7V9SnEvMwnGnQlYh3eUvcpxTvNmcTdD3iXc7tb8B00Oca8Tbn8mMyF7SIx5XjTgQt4terxW37KCmCJkXQpAiaFEGTImhSBE2KoEkRNCmCJkXQpCSCLuxBWFrlHCaChj8ETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETYqgSRE0KYImRdCkZIKu3Ia/hNK5ywQNwyBoYgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiYlFXTpdvxjqZ2zVNAgaFIETYqgSRE0KYImRdCkCJoUQZMiaFIETcrF0gPMbWxvwu3N3ZEmWY/afo19ckGP2fflnmrs5xTsmLMLep81r+6inUbQL3DI1V2w8xD0TKYGKdzDEvSRfLr+sPQIZ8HfdqQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KQImhRBkyJoUgRNiqBJETQpgiZF0KT8Bj41hIoIl4sHAAAAAElFTkSuQmCC">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --sage:#A8BFA3;
+  --sage-deep:#6F8B6A;
+  --cream:#F7F5EC;
+  --off-white:#FCFCF8;
+  --olive:#354536;
+  --sage-light:#DDE8D8;
+  --paper:#FBF8F0;
+  --paper-shadow: rgba(53,69,54,0.18);
+  --terracotta:#B5654A;
+  --gold:#C29A3F;
+
+  --bg:var(--cream);
+  --bg-elevated:var(--off-white);
+  --bg-sunken:var(--sage-light);
+  --text:var(--olive);
+  --text-soft:#54634F;
+  --text-faint:#6C7A67;
+  --border:#E3E6D9;
+  --accent:var(--sage-deep);
+  --accent-soft:var(--sage);
+  --accent-tint: rgba(111,139,106,0.14);
+  --danger:#A8523B;
+  --warn:#B08A3E;
+  --ok:#5E8A5A;
+
+  --radius-s:10px;
+  --radius-m:16px;
+  --radius-l:26px;
+  --shadow-xs:0 1px 2px rgba(53,69,54,0.05);
+  --shadow-s:0 2px 8px rgba(53,69,54,0.07), 0 1px 2px rgba(53,69,54,0.05);
+  --shadow-m:0 10px 28px rgba(53,69,54,0.11), 0 2px 8px rgba(53,69,54,0.06);
+  --shadow-book:0 22px 50px rgba(20,26,18,0.38), 0 6px 16px rgba(20,26,18,0.22);
+  --shadow-btn: 0 6px 16px rgba(111,139,106,0.28);
+
+  --ease: cubic-bezier(.22,.61,.36,1);
+  --ease-soft: cubic-bezier(.4,0,.2,1);
+
+  --font-display:'Fraunces', Georgia, serif;
+  --font-body:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  color-scheme: light;
+}
+:root[data-theme="dark"], :root:not([data-theme="light"]) {
+  @media (prefers-color-scheme: dark){
+    --bg:#1A211A;
+    --bg-elevated:#212B20;
+    --bg-sunken:#26311F;
+    --text:#E7EDE3;
+    --text-soft:#B7C2AF;
+    --text-faint:#93A38C;
+    --border:#33402E;
+    --accent:#8FB088;
+    --accent-soft:#6F8B6A;
+    --accent-tint: rgba(143,176,136,0.14);
+    --paper:#20281F;
+    --paper-shadow: rgba(0,0,0,0.5);
+    --shadow-btn: 0 6px 18px rgba(0,0,0,0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A211A;
+  --bg-elevated:#212B20;
+  --bg-sunken:#26311F;
+  --text:#E7EDE3;
+  --text-soft:#B7C2AF;
+  --text-faint:#93A38C;
+  --border:#33402E;
+  --accent:#8FB088;
+  --accent-soft:#6F8B6A;
+  --accent-tint: rgba(143,176,136,0.14);
+  --paper:#20281F;
+  --paper-shadow: rgba(0,0,0,0.5);
+  --shadow-btn: 0 6px 18px rgba(0,0,0,0.4);
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+h1,h2,h3,h4{font-family:var(--font-display); margin:0; color:var(--text); font-weight:600; letter-spacing:-0.015em; line-height:1.15;}
+p{margin:0;}
+button{font-family:inherit; cursor:pointer;}
+input,textarea,select{font-family:inherit; color:inherit;}
+a{color:inherit;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--border); border-radius:20px;}
+::selection{background:var(--sage-light); color:var(--olive);}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
+button:focus-visible, .subject-card:focus-visible, .note-card:focus-visible, .pdf-card:focus-visible{outline-offset:3px;}
+@media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important; scroll-behavior:auto !important;} }
+
+/* ============ SHELL ============ */
+#shell{display:flex; min-height:100vh; min-height:100dvh;}
+#sidebar{
+  width:236px; flex-shrink:0; background:var(--bg-elevated); border-right:1px solid var(--border);
+  padding:28px 16px; display:flex; flex-direction:column; gap:28px;
+  position:sticky; top:0; height:100vh; height:100dvh;
+}
+.brand{font-family:var(--font-display); font-weight:600; font-size:1.55rem; color:var(--accent); padding-left:8px; display:flex; align-items:baseline; gap:2px; letter-spacing:-0.02em;}
+.brand .dot{color:var(--terracotta); font-family:var(--font-body);}
+#nav{display:flex; flex-direction:column; gap:2px;}
+.nav-item{
+  display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:var(--radius-s);
+  color:var(--text-soft); font-size:0.93rem; font-weight:500; background:none; border:none; text-align:left; width:100%;
+  transition:background .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
+}
+.nav-item:hover{background:var(--bg-sunken); color:var(--text); transform:translateX(1px);}
+.nav-item.active{background:var(--sage-light); color:var(--olive);}
+:root[data-theme="dark"] .nav-item.active{background:var(--bg-sunken); color:var(--accent);}
+.nav-item svg{width:18px; height:18px; flex-shrink:0;}
+#sidebar-foot{margin-top:auto; display:flex; flex-direction:column; gap:10px;}
+.streak-pill{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:var(--radius-s); background:var(--bg-sunken); font-size:0.85rem; color:var(--text-soft);}
+
+#main{flex:1; min-width:0; display:flex; flex-direction:column;}
+#topbar{
+  display:flex; align-items:center; gap:14px; padding:16px 28px; border-bottom:1px solid var(--border);
+  background:var(--bg); position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+}
+#topbar .search-btn{
+  flex:1; max-width:420px; display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:999px;
+  border:1px solid var(--border); background:var(--bg-elevated); color:var(--text-faint); font-size:0.87rem;
+  transition:border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+#topbar .search-btn:hover{border-color:var(--accent-soft); box-shadow:var(--shadow-xs);}
+#topbar .search-btn svg{width:16px;height:16px;}
+.icon-btn{
+  width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:var(--bg-elevated);
+  display:flex; align-items:center; justify-content:center; color:var(--text-soft);
+  transition:background .16s var(--ease), color .16s var(--ease), transform .12s var(--ease), border-color .16s var(--ease);
+}
+.icon-btn svg{width:18px; height:18px;}
+.icon-btn:hover{background:var(--bg-sunken); color:var(--text); border-color:var(--accent-soft);}
+.icon-btn:active{transform:scale(.92);}
+#account-widget{display:none; align-items:center;}
+#account-widget .btn svg{width:15px;height:15px;}
+.account-avatar{width:34px; height:34px; border-radius:50%; border:1.5px solid var(--border); background:var(--accent-tint); color:var(--accent); font-weight:700; font-size:0.82rem; display:flex; align-items:center; justify-content:center; overflow:hidden; transition:border-color .16s var(--ease), transform .12s var(--ease);}
+.account-avatar:hover{border-color:var(--accent-soft);}
+.account-avatar:active{transform:scale(.93);}
+.account-avatar img{width:100%; height:100%; object-fit:cover;}
+.account-avatar-lg{width:48px; height:48px; border-radius:50%; background:var(--accent-tint); color:var(--accent); font-weight:700; font-size:1.1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+#save-indicator{font-size:0.78rem; color:var(--text-faint); display:flex; align-items:center; gap:6px; opacity:0; transition:opacity .3s var(--ease);}
+#save-indicator.show{opacity:1;}
+#save-indicator .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);}
+
+#view{flex:1; padding:30px 28px 90px; max-width:1180px; width:100%; margin:0 auto;}
+@media (max-width:980px){ #view{padding:20px 16px 100px;} }
+
+/* mobile bottom nav */
+#bottom-nav{display:none;}
+@media (max-width:980px){
+  #sidebar{display:none;}
+  #bottom-nav{
+    display:flex; position:fixed; bottom:0; left:0; right:0; z-index:30; background:var(--bg-elevated);
+    border-top:1px solid var(--border); padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));
+    justify-content:space-around;
+  }
+  .bn-item{display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--text-faint); font-size:0.62rem; padding:6px 8px; border-radius:10px; min-width:52px; transition:color .16s var(--ease), background .16s var(--ease);}
+  .bn-item svg{width:20px;height:20px;}
+  .bn-item.active{color:var(--accent); background:var(--accent-tint);}
+  .bn-item.more{color:var(--text-faint);}
+}
+
+/* ============ GENERIC UI ============ */
+.page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:26px; flex-wrap:wrap;}
+.page-head h1{font-size:clamp(1.5rem,1.2rem + 1vw,1.85rem);}
+.page-head .sub{color:var(--text-soft); font-size:0.92rem; margin-top:5px;}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:999px; border:1px solid transparent;
+  font-size:0.88rem; font-weight:600; background:var(--accent); color:var(--off-white);
+  transition:transform .16s var(--ease), box-shadow .16s var(--ease), background .16s var(--ease);
+}
+.btn:hover{box-shadow:var(--shadow-btn); transform:translateY(-1px);}
+.btn:active{transform:translateY(0) scale(.97); box-shadow:var(--shadow-xs);}
+.btn.secondary{background:var(--bg-elevated); color:var(--text); border-color:var(--border);}
+.btn.secondary:hover{box-shadow:var(--shadow-s); border-color:var(--accent-soft);}
+.btn.ghost{background:transparent; color:var(--accent); border-color:transparent; padding:8px 10px;}
+.btn.ghost:hover{box-shadow:none; background:var(--accent-tint);}
+.btn.danger{background:var(--danger); color:#fff;}
+.btn svg{width:16px;height:16px;}
+.btn.small{padding:6px 12px; font-size:0.78rem;}
+
+.card{background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-m); padding:20px; transition:box-shadow .2s var(--ease), transform .2s var(--ease);}
+.grid{display:grid; gap:16px;}
+.grid.cols-2{grid-template-columns:1fr 1fr;}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+@media (max-width:900px){ .grid.cols-2, .grid.cols-3{grid-template-columns:1fr;} }
+
+.section-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:13px;}
+.section-title h3{font-size:1.05rem;}
+.section-title .link{font-size:0.82rem; color:var(--accent); font-weight:600; background:none; border:none; border-radius:6px; padding:3px 6px; transition:background .15s var(--ease);}
+.section-title .link:hover{background:var(--accent-tint);}
+
+.empty{
+  border:1.5px dashed var(--border); border-radius:var(--radius-m); padding:38px 20px; text-align:center;
+  color:var(--text-faint); font-size:0.9rem; display:flex; flex-direction:column; gap:10px; align-items:center;
+  background:linear-gradient(180deg, transparent, var(--accent-tint) 220%);
+}
+.empty svg{width:28px;height:28px; opacity:0.55; color:var(--accent-soft);}
+
+.badge{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:600;}
+.badge.todo{background:var(--bg-sunken); color:var(--text-soft);}
+.badge.doing, .badge.inprogress{background:#F1E3C4; color:#7A5C16;}
+:root[data-theme="dark"] .badge.doing, :root[data-theme="dark"] .badge.inprogress{background:#3A331B; color:#D9BB6E;}
+.badge.done, .badge.completed, .badge.mastered{background:#DCEAD8; color:#3A6236;}
+:root[data-theme="dark"] .badge.done, :root[data-theme="dark"] .badge.completed, :root[data-theme="dark"] .badge.mastered{background:#233827; color:#8FB088;}
+.badge.urgent{background:#F3DCD5; color:#8B3B20;}
+:root[data-theme="dark"] .badge.urgent{background:#3C241C; color:#E19274;}
+
+.progress-track{height:7px; background:var(--bg-sunken); border-radius:99px; overflow:hidden;}
+.progress-fill{height:100%; background:var(--accent); border-radius:99px; transition:width .5s var(--ease);}
+
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:14px;}
+.field label{font-size:0.78rem; font-weight:600; color:var(--text-soft);}
+.field input, .field select, .field textarea{
+  padding:10px 12px; border-radius:var(--radius-s); border:1px solid var(--border); background:var(--bg);
+  font-size:0.9rem; color:var(--text); width:100%; transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent-soft); box-shadow:0 0 0 3px var(--accent-tint); outline:none;}
+.field textarea{resize:vertical; min-height:80px;}
+.field-row{display:flex; gap:12px;}
+.field-row .field{flex:1;}
+.checkbox-row{display:flex; align-items:center; gap:8px; font-size:0.88rem;}
+
+.subject-chip{display:inline-flex; align-items:center; gap:6px; font-size:0.76rem; padding:3px 9px; border-radius:999px; background:var(--bg-sunken); color:var(--text-soft); font-weight:600;}
+.swatch{width:9px;height:9px;border-radius:50%; flex-shrink:0;}
+
+.icon-btn.tiny{width:31px;height:31px; border:none; background:var(--bg-sunken);}
+.icon-btn.tiny:hover{background:var(--accent-tint); color:var(--accent);}
+.row-actions{display:flex; gap:6px; opacity:0; transition:opacity .15s var(--ease);}
+.hover-row:hover .row-actions, .hover-row:focus-within .row-actions{opacity:1;}
+@media (max-width:980px){ .row-actions{opacity:1;} }
+
+/* modal */
+#modal-backdrop{position:fixed; inset:0; background:rgba(20,26,18,0.46); backdrop-filter:blur(2px); display:none; align-items:flex-start; justify-content:center; z-index:100; padding:5vh 16px; overflow-y:auto;}
+#modal-backdrop.open{display:flex;}
+.modal{background:var(--bg-elevated); border-radius:var(--radius-m); max-width:480px; width:100%; padding:26px; box-shadow:var(--shadow-m); animation:modalIn .22s var(--ease);}
+.modal.wide{max-width:640px;}
+@keyframes modalIn{from{opacity:0; transform:translateY(10px) scale(.97);} to{opacity:1; transform:none;}}
+.modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+.modal-head h3{font-size:1.15rem;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:20px;}
+
+/* toast */
+#toast{position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(10px); background:var(--olive); color:var(--off-white); padding:11px 20px; border-radius:999px; font-size:0.85rem; opacity:0; pointer-events:none; transition:opacity .25s var(--ease), transform .25s var(--ease); z-index:200; box-shadow:var(--shadow-m);}
+:root[data-theme="dark"] #toast{background:var(--sage-light); color:var(--olive);}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+@media (max-width:980px){ #toast{bottom:76px;} }
+
+/* ============ HERO / DASHBOARD ============ */
+.hero-greet{margin-bottom:30px; position:relative; padding:6px 0 2px;}
+.hero-greet .hero-deco{position:absolute; top:-26px; right:-8px; width:150px; height:150px; opacity:.55; pointer-events:none; color:var(--accent-soft); z-index:0;}
+:root[data-theme="dark"] .hero-greet .hero-deco{opacity:.35;}
+.hero-greet .eyebrow-row{display:flex; align-items:center; gap:10px; margin-bottom:6px; position:relative; z-index:1;}
+.hero-greet .date-chip{font-size:0.76rem; font-weight:600; color:var(--accent); background:var(--accent-tint); padding:4px 11px; border-radius:999px;}
+.hero-greet h1{font-size:clamp(1.8rem, 1.4rem + 1.6vw, 2.3rem); position:relative; z-index:1;}
+.hero-greet p{color:var(--text-soft); margin-top:6px; font-size:1rem; position:relative; z-index:1;}
+.hero-streak{display:inline-flex; align-items:center; gap:7px; margin-top:14px; padding:7px 14px; border-radius:999px; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.82rem; color:var(--text-soft); position:relative; z-index:1;}
+
+.today-list{display:flex; flex-direction:column; gap:10px;}
+.today-item{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:var(--radius-s); background:var(--bg-sunken); transition:transform .15s var(--ease);}
+.today-item:hover{transform:translateX(2px);}
+.today-item .time{font-size:0.76rem; color:var(--text-faint); font-variant-numeric:tabular-nums; width:64px; flex-shrink:0;}
+.today-item .txt{font-size:0.88rem; font-weight:500;}
+
+.subject-card{border:1px solid var(--border); border-radius:var(--radius-m); padding:18px; background:var(--bg-elevated); cursor:pointer; transition:box-shadow .2s var(--ease), transform .2s var(--ease), border-color .2s var(--ease); position:relative; box-shadow:var(--shadow-xs);}
+.subject-card:hover{box-shadow:var(--shadow-s); transform:translateY(-3px); border-color:var(--accent-soft);}
+.subject-card:active{transform:translateY(-1px) scale(.99);}
+.subject-card .bar{height:4px; border-radius:99px; margin-bottom:14px;}
+.subject-card h4{font-size:1.03rem;}
+.subject-card .code{font-size:0.78rem; color:var(--text-faint); margin-top:3px;}
+.subject-card .meta{display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:0.78rem; color:var(--text-soft);}
+.pin-flag{position:absolute; top:14px; right:14px; color:var(--gold);}
+.pin-flag svg{width:14px;height:14px;}
+
+.assign-row{display:flex; align-items:center; gap:14px; padding:14px 4px; border-bottom:1px solid var(--border); transition:background .15s var(--ease);}
+.assign-row:last-child{border-bottom:none;}
+.assign-row:hover{background:var(--accent-tint); margin:0 -10px; padding:14px 10px; border-radius:10px;}
+.assign-row .info{flex:1; min-width:0; cursor:pointer;}
+.assign-row .info h4{font-size:0.92rem; font-weight:600; margin-bottom:4px;}
+.assign-row .info .meta-line{font-size:0.78rem; color:var(--text-faint); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.assign-row .progress-wrap{width:90px; flex-shrink:0;}
+.assign-row .progress-wrap span{font-size:0.72rem; color:var(--text-faint);}
+
+.corkboard{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px;}
+.sticky{background:#FBF3C8; color:#4a4226; padding:14px 14px 16px; border-radius:5px 5px 26px 5px; font-size:0.85rem; box-shadow:0 1px 2px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.12); position:relative; min-height:92px; transform:rotate(var(--r,-1deg)); transition:transform .2s var(--ease), box-shadow .2s var(--ease);}
+.sticky:hover{transform:rotate(0deg) translateY(-2px); box-shadow:0 2px 4px rgba(0,0,0,0.1), 0 8px 18px rgba(0,0,0,0.16);}
+.sticky:nth-child(3n){--r:1deg; background:#D9E9CE;}
+.sticky:nth-child(3n+2){--r:-0.6deg; background:#F6DCC9;}
+:root[data-theme="dark"] .sticky{color:#3a341c; box-shadow:0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4);}
+.sticky .del{position:absolute; top:6px; right:8px; background:none; border:none; color:inherit; opacity:0.4; font-size:0.9rem; transition:opacity .15s var(--ease);}
+.sticky .del:hover{opacity:0.9;}
+.add-sticky{border:1.5px dashed var(--border); border-radius:5px 5px 26px 5px; min-height:92px; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:0.82rem; background:none; transition:border-color .18s var(--ease), color .18s var(--ease), background .18s var(--ease);}
+.add-sticky:hover{border-color:var(--accent-soft); color:var(--accent); background:var(--accent-tint);}
+
+.goal-row{display:flex; align-items:center; gap:10px; padding:9px 2px;}
+.goal-check{width:20px; height:20px; border-radius:6px; border:1.5px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--bg); transition:background .15s var(--ease), border-color .15s var(--ease), transform .1s var(--ease); color:#fff;}
+.goal-check:active{transform:scale(.88);}
+.goal-check.on{background:var(--accent); border-color:var(--accent);}
+.goal-check svg{width:12px;height:12px;}
+.goal-row.done .txt{text-decoration:line-through; color:var(--text-faint);}
+
+.tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:20px; overflow-x:auto;}
+.tab{padding:10px 14px; font-size:0.85rem; font-weight:600; color:var(--text-faint); background:none; border:none; border-bottom:2px solid transparent; white-space:nowrap; transition:color .15s var(--ease), border-color .15s var(--ease);}
+.tab:hover{color:var(--text-soft);}
+.tab.active{color:var(--accent); border-color:var(--accent);}
+
+.filter-pills{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+.pill{padding:6px 14px; border-radius:999px; border:1px solid var(--border); background:var(--bg-elevated); font-size:0.8rem; color:var(--text-soft); font-weight:600; transition:background .15s var(--ease), border-color .15s var(--ease), color .15s var(--ease);}
+.pill:hover{border-color:var(--accent-soft);}
+.pill.active{background:var(--sage-light); border-color:var(--sage-light); color:var(--olive);}
+:root[data-theme="dark"] .pill.active{background:var(--bg-sunken); color:var(--accent); border-color:var(--accent);}
+
+/* revision */
+.topic-row{display:flex; align-items:center; justify-content:space-between; padding:11px 2px; border-bottom:1px solid var(--border); gap:10px;}
+.topic-row:last-child{border-bottom:none;}
+.status-select{font-size:0.76rem; font-weight:600; padding:5px 10px; border-radius:999px; border:1px solid var(--border); background:var(--bg);}
+
+/* timetable */
+.ttable{display:grid; grid-template-columns:56px repeat(7,1fr); gap:6px; min-width:760px;}
+.ttable-scroll{overflow-x:auto; padding-bottom:8px;}
+.tt-head{font-size:0.76rem; font-weight:700; color:var(--text-soft); text-align:center; padding:6px 0;}
+.tt-hour{font-size:0.7rem; color:var(--text-faint); text-align:right; padding-right:6px;}
+.tt-cell{min-height:34px; border-radius:6px; position:relative;}
+.tt-block{position:absolute; left:2px; right:2px; border-radius:8px; padding:4px 7px; font-size:0.68rem; font-weight:600; color:#fff; overflow:hidden; cursor:pointer; transition:filter .15s var(--ease);}
+.tt-block:hover{filter:brightness(1.08);}
+
+/* notes vault */
+.note-card{border:1px solid var(--border); border-radius:var(--radius-m); padding:16px; background:var(--bg-elevated); cursor:pointer; box-shadow:var(--shadow-xs); transition:box-shadow .2s var(--ease), transform .2s var(--ease), border-color .2s var(--ease);}
+.note-card:hover{box-shadow:var(--shadow-s); transform:translateY(-3px); border-color:var(--accent-soft);}
+.note-card h4{font-size:0.95rem; margin-bottom:4px;}
+.note-card .preview{font-size:0.8rem; color:var(--text-soft); margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.note-card .meta-line{font-size:0.72rem; color:var(--text-faint); margin-top:9px;}
+.pdf-card{display:flex; align-items:center; gap:12px; border:1px solid var(--border); border-radius:var(--radius-m); padding:14px 15px; background:var(--bg-elevated); cursor:pointer; box-shadow:var(--shadow-xs); transition:box-shadow .2s var(--ease), transform .2s var(--ease), border-color .2s var(--ease);}
+.pdf-card:hover{box-shadow:var(--shadow-s); transform:translateY(-3px); border-color:var(--accent-soft);}
+.pdf-thumb{width:34px; height:44px; background:var(--paper); border-radius:3px; box-shadow:var(--shadow-s); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent);}
+.pdf-thumb svg{width:16px;height:16px;}
+
+/* ============ STAT CARDS (Semester Progress) ============ */
+.stat-card{position:relative; padding:18px 18px 18px 20px; background:var(--bg-elevated); border-radius:var(--radius-s); overflow:hidden;}
+.stat-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent-soft); border-radius:0 3px 3px 0;}
+.stat-card p{font-size:0.76rem; color:var(--text-faint); font-weight:600; letter-spacing:0.01em;}
+.stat-card h2{margin-top:7px; font-size:1.7rem;}
+
+/* ===== BOOK READER ===== */
+#reader-view{position:fixed; inset:0; background:#12160F; z-index:500; display:flex; flex-direction:column;}
+:root[data-theme="light"] #reader-view.reader-light-chrome{background:#EFE9DA;}
+.reader-toolbar{display:flex; align-items:center; gap:8px; padding:10px 16px calc(10px + env(safe-area-inset-top,0px)) 16px; padding-top:calc(10px + env(safe-area-inset-top,0px)); background:rgba(18,22,15,0.92); color:#E7EDE3; flex-wrap:wrap;}
+.reader-toolbar .grow{flex:1;}
+.reader-toolbar button{background:rgba(255,255,255,0.08); border:none; color:#E7EDE3; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:background .15s var(--ease), transform .12s var(--ease);}
+.reader-toolbar button:hover{background:rgba(255,255,255,0.17);}
+.reader-toolbar button:active{transform:scale(.9);}
+.reader-toolbar button svg{width:16px;height:16px;}
+.reader-toolbar .pageno{font-size:0.78rem; color:#CBD5C6; padding:0 8px; font-variant-numeric:tabular-nums;}
+.reader-toolbar .title{font-size:0.82rem; color:#EAE7D9; font-weight:600; margin-right:8px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.book-stage{flex:1; display:flex; align-items:center; justify-content:center; overflow:auto; padding:26px; perspective:2400px;}
+.book-spread{display:flex; box-shadow:var(--shadow-book); border-radius:4px; overflow:visible; position:relative; transition:transform .5s var(--ease), opacity .4s var(--ease);}
+.book-spread.turning-next{transform:rotateY(-10deg) scale(.98); opacity:.8;}
+.book-spread.turning-prev{transform:rotateY(10deg) scale(.98); opacity:.8;}
+.book-page{background:var(--paper); position:relative;}
+.book-page canvas{display:block; max-width:100%; height:auto;}
+.book-page.left{border-radius:4px 0 0 4px; box-shadow:inset -9px 0 16px -11px var(--paper-shadow);}
+.book-page.right{border-radius:0 4px 4px 0; box-shadow:inset 9px 0 16px -11px var(--paper-shadow);}
+.book-page.single{border-radius:4px;}
+.book-spine{width:3px; background:linear-gradient(90deg, rgba(0,0,0,0.22), rgba(0,0,0,0.04) 40%, rgba(0,0,0,0.04) 60%, rgba(0,0,0,0.22)); flex-shrink:0;}
+.reader-tap-l, .reader-tap-r{position:absolute; top:0; bottom:0; width:14%; z-index:5; cursor:pointer;}
+.reader-tap-l{left:0;} .reader-tap-r{right:0;}
+.thumb-strip{display:flex; gap:8px; overflow-x:auto; padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px)); background:rgba(18,22,15,0.92);}
+.thumb-strip img, .thumb-strip .thumb-ph{width:44px; height:58px; border-radius:3px; object-fit:cover; flex-shrink:0; cursor:pointer; border:2px solid transparent; opacity:.7; transition:opacity .15s var(--ease), border-color .15s var(--ease), transform .15s var(--ease);}
+.thumb-strip .thumb-ph:hover{opacity:1; transform:translateY(-2px);}
+.thumb-strip .active{border-color:var(--sage); opacity:1;}
+@media (max-width:760px){
+  .reader-toolbar .title{display:none;}
+  .book-stage{padding:12px;}
+  .hero-greet .hero-deco{width:100px; height:100px; top:-14px; right:-14px;}
+}
+
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<!-- Google Sign-In / cloud sync: fill in firebase-config.js with your own Firebase project to enable -->
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<!-- Used only for Settings → Backup (zips up local data + PDFs for export/import) -->
+<script>
+/* Google Sign-In / cloud sync config — not secret, safe to keep here.
+   Access is controlled by Firestore security rules, not by hiding this. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAEzArSkAPkJnGxgLjbES3OFrcpz63G9gU",
+  authDomain: "notely-log-5f79f.firebaseapp.com",
+  projectId: "notely-log-5f79f",
+  storageBucket: "notely-log-5f79f.firebasestorage.app",
+  messagingSenderId: "52253657813",
+  appId: "1:52253657813:web:9617e49812f33d7d63f05c"
+};
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
+
 <a href="#view" class="visually-hidden-focusable" style="position:absolute; left:-9999px; top:0; background:var(--bg-elevated); color:var(--text); padding:10px 16px; border-radius:8px; z-index:999;" onfocus="this.style.left='16px'; this.style.top='16px';" onblur="this.style.left='-9999px';">Skip to content</a>
 <div id="shell">
   <aside id="sidebar" aria-label="Main navigation">
@@ -63,6 +467,1884 @@
 <div id="modal-backdrop" role="dialog" aria-modal="true"><div id="modal-inner"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="app.js"></script>
+<script>
+/* ============================================================
+   NOTELYLOG — app.js
+   Single-page study dashboard: state, rendering, PDF book reader.
+   Firebase Auth + Firestore sync lightweight study data; actual PDF
+   files live in this device's IndexedDB; installable as a PWA.
+   ============================================================ */
+(function(){
+"use strict";
+
+/* ============================================================
+   PWA — register as early as physically possible. Chrome runs its
+   installability check early in the page lifecycle; if the service
+   worker isn't registered yet when that check runs, beforeinstallprompt
+   can simply never fire for that page load. This used to be deferred to
+   window's "load" event, which was very plausibly the real cause of
+   "install not available" showing up on browsers that do support it.
+   ============================================================ */
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(typeof refreshInstallSection==="function") refreshInstallSection();
+});
+window.addEventListener("appinstalled", ()=>{
+  deferredInstallPrompt = null;
+  if(typeof toast==="function") toast("notelylog installed");
+  if(typeof refreshInstallSection==="function") refreshInstallSection();
+});
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(reg=> console.log("Service worker registered:", reg.scope))
+    .catch(err=> console.error("Service worker registration failed:", err));
+}
+
+/* ---------- storage ---------- */
+const STORE_KEY = "notelylog_v1";
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function defaultState(){
+  const semId = uid();
+  return {
+    settings:{ theme:"system", reminderDays:3 },
+    activeSemesterId: semId,
+    semesters:[{id:semId, name:"Semester 1", totalWeeks:17, currentWeek:1, archived:false, createdAt:Date.now()}],
+    subjects:[], notes:[], pdfs:[], assignments:[], revisionTopics:[],
+    timetable:[], goals:[], quickNotes:[], bookmarksList:[], trash:[],
+    tombstones:{},
+    stats:{ streak:0, lastActiveDate:null }
+  };
+}
+let state;
+try{
+  const raw = localStorage.getItem(STORE_KEY);
+  state = raw ? JSON.parse(raw) : defaultState();
+  // fill any missing keys for forward-compat
+  const d = defaultState();
+  for(const k in d){ if(!(k in state)) state[k]=d[k]; }
+}catch(e){ state = defaultState(); }
+
+/* Cloud-sync module state is declared here — BEFORE anything that could
+   call save() (touchStreak below runs immediately at load) — so that
+   queueCloudSave() always finds real (if still-null) variables instead of
+   throwing a "cannot access before initialization" error. That error used
+   to get caught by save()'s own try/catch and misreported to the user as
+   "storage may be full", which had nothing to do with the real problem.
+   The actual Firebase SDK setup still happens later, once firebase.js has
+   loaded — this block only reserves the variable names early. */
+let fbAuth=null, fbDb=null, fbUser=null, cloudSaveTimer=null, cloudSynced=false, initialSyncDone=false;
+
+let saveTimer=null;
+function save(){
+  let localOk = true;
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  }catch(e){
+    localOk = false;
+    console.error("Local save failed:", e);
+    toast("Couldn't save — storage may be full");
+  }
+  if(localOk){
+    const ind=document.getElementById("save-indicator");
+    if(ind){
+      ind.classList.add("show");
+      clearTimeout(saveTimer);
+      saveTimer=setTimeout(()=>ind.classList.remove("show"),1400);
+    }
+  }
+  // Cloud sync errors must never be reported as a local storage problem —
+  // queueCloudSave() has its own internal error handling (see below) and
+  // is intentionally outside the try/catch above.
+  try{ queueCloudSave(); }
+  catch(e){ console.error("Cloud sync scheduling failed:", e); }
+}
+function touchStreak(){
+  const t=todayStr();
+  if(state.stats.lastActiveDate===t) return;
+  const y=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  state.stats.streak = state.stats.lastActiveDate===y ? state.stats.streak+1 : 1;
+  state.stats.lastActiveDate=t;
+  save();
+}
+touchStreak();
+
+function activeSemester(){ return state.semesters.find(s=>s.id===state.activeSemesterId) || state.semesters[0]; }
+function inActiveSem(x){ return x.semesterId===state.activeSemesterId; }
+
+/* ---------- theme ---------- */
+function applyTheme(){
+  const t=state.settings.theme;
+  const root=document.documentElement;
+  if(t==="light"){ root.setAttribute("data-theme","light"); }
+  else if(t==="dark"){ root.setAttribute("data-theme","dark"); }
+  else { root.removeAttribute("data-theme"); }
+}
+applyTheme();
+
+/* ============================================================
+   PWA — installability (Android/Chrome/Edge) + iOS "Add to Home Screen"
+   ============================================================ */
+const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+function isStandaloneApp(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function refreshInstallSection(){
+  const box = document.getElementById("install-section");
+  if(box) box.innerHTML = installSectionHtml();
+  bindInstallSection();
+}
+function installSectionHtml(){
+  if(isStandaloneApp()){
+    return `<p style="font-size:0.85rem; color:var(--text-soft);">notelylog is installed and running as an app on this device.</p>`;
+  }
+  if(deferredInstallPrompt){
+    return `<p style="font-size:0.85rem; color:var(--text-soft); margin-bottom:12px;">Install notelylog for a full-screen, app-like experience with its own icon — no browser bar.</p>
+      <button class="btn secondary" id="install-app-btn">${icon('download')}<span>Install notelylog</span></button>`;
+  }
+  if(isIOSDevice){
+    return `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.6;">To install on iPhone/iPad: tap the Share button ${icon('share')} in Safari, then choose <strong>Add to Home Screen</strong>. notelylog will then open full-screen from your Home Screen, just like an app.</p>`;
+  }
+  return `<p style="font-size:0.85rem; color:var(--text-soft);">Your browser doesn't support one-tap install here — check your browser's menu for an "Install" or "Add to Home Screen" option.</p>`;
+}
+function bindInstallSection(){
+  const btn=document.getElementById("install-app-btn");
+  if(!btn) return;
+  btn.addEventListener("click", async ()=>{
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    refreshInstallSection();
+  });
+}
+/* ---------- toast ---------- */
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById("toast");
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove("show"),2200);
+}
+
+/* ---------- modal ---------- */
+function openModal(html, wide){
+  const backdrop=document.getElementById("modal-backdrop");
+  document.getElementById("modal-inner").innerHTML = `<div class="modal ${wide?'wide':''}">${html}</div>`;
+  backdrop.classList.add("open");
+}
+function closeModal(){ document.getElementById("modal-backdrop").classList.remove("open"); }
+document.getElementById("modal-backdrop").addEventListener("click", e=>{ if(e.target.id==="modal-backdrop") closeModal(); });
+
+/* ============================================================
+   GOOGLE SIGN-IN + CLOUD SYNC (optional — degrades gracefully
+   if firebase-config.js hasn't been filled in with a real project)
+   ============================================================ */
+const FIREBASE_READY = (typeof firebase!=="undefined")
+  && (typeof FIREBASE_CONFIG!=="undefined")
+  && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey!=="YOUR_API_KEY";
+
+function googleGIcon(){
+  return `<svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">
+    <path fill="#4285F4" d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.78h5.4a4.6 4.6 0 0 1-2 3.02v2.5h3.23c1.9-1.75 2.97-4.32 2.97-7.3z"/>
+    <path fill="#34A853" d="M10 20c2.7 0 4.96-.89 6.62-2.42l-3.23-2.5c-.9.6-2.05.95-3.4.95-2.6 0-4.8-1.76-5.59-4.12H1.06v2.59A10 10 0 0 0 10 20z"/>
+    <path fill="#FBBC05" d="M4.41 11.9a6 6 0 0 1 0-3.8V5.5H1.06a10 10 0 0 0 0 9l3.35-2.6z"/>
+    <path fill="#EA4335" d="M10 3.98c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.6 9.6 0 0 0 10 0 10 10 0 0 0 1.06 5.5l3.35 2.6C5.2 5.74 7.4 3.98 10 3.98z"/>
+  </svg>`;
+}
+
+if(FIREBASE_READY){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    try{ fbDb.enablePersistence({synchronizeTabs:true}); }catch(e){ /* multiple tabs open, fine */ }
+    fbAuth.onAuthStateChanged(handleAuthChange);
+  }catch(err){ console.error("Firebase init failed:", err); }
+}
+
+function cloudDocRef(uid){ return fbDb.collection("notelylog_users").doc(uid); }
+
+/* PDF metadata (filename, size, page count, etc.) syncs to Firestore like
+   everything else — it's tiny. The actual PDF bytes never do — they live
+   only in this device's IndexedDB (see the IndexedDB PDF storage section
+   below) and are never part of `state` at all, so there's nothing heavy
+   to strip here. A defensive strip of any old/legacy fields is kept in
+   case older data is still lying around from a previous version. */
+function sanitizeForCloud(fullState){
+  const clone = Object.assign({}, fullState);
+  clone.pdfs = fullState.pdfs.map(p=>{
+    const { localData, data, storagePath, ...meta } = p;
+    return meta;
+  });
+  clone.trash = fullState.trash.map(t=>{
+    if(t.type==="pdf" && t.data){
+      const { localData, data, storagePath, ...meta } = t.data;
+      return {...t, data: meta};
+    }
+    return t;
+  });
+  return clone;
+}
+
+/* ---- safe, conflict-aware merge ----
+   Replacing the whole local state with whatever the cloud has (or vice
+   versa) is what let one device silently erase another device's newer
+   changes. Instead, every array of records is merged item-by-item by id:
+   - an id present on only one side is kept (the other side just hasn't
+     seen it yet, and will pick it up on its own next sync)
+   - an id present on both sides keeps whichever copy has the newer
+     updatedAt/createdAt timestamp
+   - `state.tombstones` (id -> deletedAt) records every deletion, so a
+     device that deleted something doesn't have it silently reappear just
+     because another device's older snapshot still had it */
+function recordTimestamp(item){
+  return item && (item.updatedAt || item.deletedAt || item.createdAt) || 0;
+}
+function mergeArrayById(localArr, cloudArr, tombstones){
+  const map = new Map();
+  (cloudArr||[]).forEach(item=>{ if(item && item.id) map.set(item.id, item); });
+  (localArr||[]).forEach(item=>{
+    if(!item || !item.id) return;
+    const existing = map.get(item.id);
+    if(!existing){ map.set(item.id, item); return; }
+    map.set(item.id, recordTimestamp(item) >= recordTimestamp(existing) ? item : existing);
+  });
+  if(tombstones){
+    for(const id in tombstones){
+      const item = map.get(id);
+      if(item && recordTimestamp(item) <= tombstones[id]) map.delete(id);
+    }
+  }
+  return Array.from(map.values());
+}
+function mergeCloudState(localState, cloudStateRaw){
+  const cloudState = mergeWithDefaults(cloudStateRaw);
+  const tombstones = Object.assign({}, cloudState.tombstones, localState.tombstones);
+  const merged = Object.assign({}, localState);
+  merged.subjects = mergeArrayById(localState.subjects, cloudState.subjects, tombstones);
+  merged.notes = mergeArrayById(localState.notes, cloudState.notes, tombstones);
+  merged.assignments = mergeArrayById(localState.assignments, cloudState.assignments, tombstones);
+  merged.revisionTopics = mergeArrayById(localState.revisionTopics, cloudState.revisionTopics, tombstones);
+  merged.timetable = mergeArrayById(localState.timetable, cloudState.timetable, tombstones);
+  merged.goals = mergeArrayById(localState.goals, cloudState.goals, tombstones);
+  merged.quickNotes = mergeArrayById(localState.quickNotes, cloudState.quickNotes, tombstones);
+  merged.bookmarksList = mergeArrayById(localState.bookmarksList, cloudState.bookmarksList, tombstones);
+  merged.pdfs = mergeArrayById(localState.pdfs, cloudState.pdfs, tombstones);
+  merged.semesters = mergeArrayById(localState.semesters, cloudState.semesters, null);
+  merged.trash = mergeArrayById(localState.trash, cloudState.trash, tombstones);
+  merged.tombstones = tombstones;
+  merged.settings = localState.settings; // per-device preference (theme etc.) — never overwritten by cloud
+  merged.activeSemesterId = localState.activeSemesterId || cloudState.activeSemesterId;
+  merged.stats = {
+    streak: Math.max((localState.stats&&localState.stats.streak)||0, (cloudState.stats&&cloudState.stats.streak)||0),
+    lastActiveDate: ((localState.stats&&localState.stats.lastActiveDate)||"") >= ((cloudState.stats&&cloudState.stats.lastActiveDate)||"")
+      ? (localState.stats&&localState.stats.lastActiveDate) : (cloudState.stats&&cloudState.stats.lastActiveDate)
+  };
+  return merged;
+}
+function tombstone(id){
+  if(!id) return;
+  state.tombstones = state.tombstones || {};
+  state.tombstones[id] = Date.now();
+}
+
+async function handleAuthChange(user){
+  fbUser = user || null;
+  initialSyncDone = false;
+  renderAccountWidget();
+  if(!fbUser){ cloudSynced=false; return; }
+  try{
+    const snap = await cloudDocRef(fbUser.uid).get();
+    if(snap.exists && snap.data() && snap.data().state){
+      state = mergeCloudState(state, snap.data().state);
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      cloudSynced = true;
+      toast("Synced from your account");
+      await refreshLocalPdfIds();
+      renderView();
+    } else {
+      await cloudDocRef(fbUser.uid).set({ state: sanitizeForCloud(state), updatedAt: Date.now() });
+      cloudSynced = true;
+      toast("Signed in — your data is now backed up to this account");
+    }
+    initialSyncDone = true;
+    queueCloudSave(); // push the merged/initial snapshot back up so both sides agree right away
+  }catch(err){
+    console.error("Cloud sync error:", err);
+    toast("Signed in, but couldn't reach cloud sync — working offline");
+  }
+}
+function mergeWithDefaults(cloudState){
+  const d=defaultState();
+  const merged=Object.assign({}, d, cloudState);
+  for(const k in d){ if(!(k in merged)) merged[k]=d[k]; }
+  return merged;
+}
+function queueCloudSave(){
+  if(!fbUser || !fbDb || !initialSyncDone) return; // never push before this device has pulled at least once this session
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(()=>{
+    cloudDocRef(fbUser.uid).set({state:sanitizeForCloud(state), updatedAt:Date.now()})
+      .catch((err)=>{ console.error("Cloud save failed:", err); toast("Sync failed — check your connection"); });
+  }, 900);
+}
+function signInWithGoogle(){
+  if(!FIREBASE_READY){ toast("Google Sign-In isn't set up yet — see firebase-config.js"); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider).catch(err=>{
+    if(err.code!=="auth/popup-closed-by-user") toast("Sign-in failed — try again");
+  });
+}
+function signOutGoogle(){
+  fbAuth.signOut().then(()=>{ closeModal(); toast("Signed out — this device now keeps its own local copy"); });
+}
+function renderAccountWidget(){
+  const box=document.getElementById("account-widget");
+  if(!box) return;
+  if(!FIREBASE_READY){ box.style.display="none"; return; }
+  box.style.display="flex";
+  if(fbUser){
+    const name = fbUser.displayName || fbUser.email || "Account";
+    const initial = name.trim()[0].toUpperCase();
+    box.innerHTML = `<button class="account-avatar" id="account-open" aria-label="Account: ${escapeHtml(name)}" title="${escapeHtml(name)}">
+      ${fbUser.photoURL?`<img src="${fbUser.photoURL}" alt="">`:`<span>${initial}</span>`}
+    </button>`;
+    document.getElementById("account-open").addEventListener("click", openAccountModal);
+  } else {
+    box.innerHTML = `<button class="btn secondary small" id="account-signin">${googleGIcon()}<span>Sign in</span></button>`;
+    document.getElementById("account-signin").addEventListener("click", signInWithGoogle);
+  }
+}
+function openAccountModal(){
+  if(!fbUser) return;
+  const name = fbUser.displayName || "";
+  openModal(`
+    <div class="modal-head"><h3>Account</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <div style="display:flex; align-items:center; gap:13px; margin-bottom:18px;">
+      ${fbUser.photoURL?`<img src="${fbUser.photoURL}" alt="" style="width:48px;height:48px;border-radius:50%;">`:`<div class="account-avatar-lg">${escapeHtml((name||fbUser.email||"?").trim()[0].toUpperCase())}</div>`}
+      <div><strong style="font-size:0.95rem;">${escapeHtml(name)}</strong><div style="font-size:0.82rem; color:var(--text-soft);">${escapeHtml(fbUser.email||"")}</div></div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--text-soft); line-height:1.5; margin-bottom:20px;">
+      ${cloudSynced ? "Your subjects, notes and progress are synced to this account and available on any device you sign in on." : "Signed in, but the last sync attempt failed — your changes are still safe in this browser."}
+    </p>
+    <div class="modal-actions"><button class="btn danger" id="account-signout">Sign out</button></div>
+  `);
+  document.getElementById("account-signout").addEventListener("click", signOutGoogle);
+}
+
+/* ============================================================
+   INDEXEDDB — actual PDF file storage (device-local only)
+   Firestore only ever holds lightweight PDF metadata (filename, size,
+   page count, ids). The real PDF bytes live here, in this browser's
+   IndexedDB, and never touch the network or Firestore at all.
+   ============================================================ */
+const PDF_DB_NAME = "notelylog_files";
+const PDF_DB_VERSION = 1;
+const PDF_STORE = "pdfs";
+let pdfDbPromise = null;
+
+function openNotelylogDB(){
+  if(pdfDbPromise) return pdfDbPromise;
+  pdfDbPromise = new Promise((resolve, reject)=>{
+    if(!window.indexedDB){ reject(new Error("IndexedDB not supported")); return; }
+    const req = indexedDB.open(PDF_DB_NAME, PDF_DB_VERSION);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(PDF_STORE)) db.createObjectStore(PDF_STORE, {keyPath:"id"});
+    };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return pdfDbPromise;
+}
+async function savePdfBlob(id, blob, fileName){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readwrite");
+    tx.objectStore(PDF_STORE).put({id, blob, fileName: fileName||"", mimeType:"application/pdf", size:blob.size, createdAt:Date.now()});
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getPdfBlob(id){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).get(id);
+    req.onsuccess = ()=> resolve(req.result || null);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function hasPdfBlob(id){
+  try{ const rec = await getPdfBlob(id); return !!(rec && rec.blob); }
+  catch(e){ return false; }
+}
+async function deletePdfBlob(id){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readwrite");
+    tx.objectStore(PDF_STORE).delete(id);
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+async function getAllPdfKeys(){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).getAllKeys();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function getAllPdfBlobs(){
+  const db = await openNotelylogDB();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(PDF_STORE, "readonly");
+    const req = tx.objectStore(PDF_STORE).getAll();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+
+/* In-memory index of which PDF ids have a blob on THIS device, so cards
+   and the reader can check availability synchronously without awaiting
+   IndexedDB on every render. Refreshed at startup and kept in sync on
+   every upload/attach/delete. */
+let localPdfIds = new Set();
+async function refreshLocalPdfIds(){
+  try{ localPdfIds = new Set(await getAllPdfKeys()); }
+  catch(e){ localPdfIds = new Set(); }
+}
+
+/* One-time migration: earlier versions of Notelylog stored PDFs as base64
+   text directly inside `state.pdfs` (first fully local, later briefly via
+   Supabase). Move any of those into IndexedDB and strip the heavy field
+   out of state for good — existing PDFs and all other data are preserved. */
+async function migrateLegacyPdfBlobs(){
+  let changed = false;
+  for(const p of state.pdfs){
+    const legacy = p.localData || p.data;
+    if(legacy && !localPdfIds.has(p.id)){
+      try{
+        const blob = base64ToBlob(legacy, "application/pdf");
+        await savePdfBlob(p.id, blob, p.filename);
+        localPdfIds.add(p.id);
+      }catch(e){ console.warn("PDF migration failed for", p.filename, e); }
+    }
+    if("localData" in p){ delete p.localData; changed=true; }
+    if("data" in p){ delete p.data; changed=true; }
+    if("storagePath" in p){ delete p.storagePath; changed=true; }
+  }
+  for(const t of state.trash){
+    if(t.type==="pdf" && t.data){
+      const legacy = t.data.localData || t.data.data;
+      if(legacy && !localPdfIds.has(t.data.id)){
+        try{
+          const blob = base64ToBlob(legacy, "application/pdf");
+          await savePdfBlob(t.data.id, blob, t.data.filename);
+          localPdfIds.add(t.data.id);
+        }catch(e){}
+      }
+      if("localData" in t.data){ delete t.data.localData; changed=true; }
+      if("data" in t.data){ delete t.data.data; changed=true; }
+      if("storagePath" in t.data){ delete t.data.storagePath; changed=true; }
+    }
+  }
+  if(changed) save();
+}
+
+function base64ToBlob(dataUrl, mime){
+  const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes], {type:mime});
+}
+function formatBytes(n){
+  if(!n && n!==0) return "";
+  if(n < 1024*1024) return Math.max(1, Math.round(n/1024))+" KB";
+  return (n/(1024*1024)).toFixed(1)+" MB";
+}
+
+/* ---------- icons ---------- */
+const ICONS = {
+  dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  subjects:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  planner:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  notes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13h6M9 17h6"/></svg>',
+  assignments:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  revision:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
+  progress:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
+  timetable:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 3l5 5-4 2-4 4 1 4-3 3-3-5-5-3 3-3 4 1 4-4z"/></svg>',
+  pinOutline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M8 13l-3 3h14l-3-3M12 3l3 5-1 5H10l-1-5z"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>',
+  bookmark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>',
+  pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></svg>',
+  chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg>',
+  chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  zoomIn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>',
+  zoomOut:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>',
+  fullscreen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M16 21h3a2 2 0 0 0 2-2v-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+  flame:'🔥',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>'
+};
+function icon(name){ return ICONS[name]||""; }
+
+/* ---------- nav ---------- */
+const NAV_ITEMS = [
+  {id:"dashboard", label:"Dashboard"},
+  {id:"subjects", label:"Subjects"},
+  {id:"planner", label:"Study Planner"},
+  {id:"notes", label:"Notes"},
+  {id:"assignments", label:"Assignments"},
+  {id:"revision", label:"Revision"},
+  {id:"progress", label:"Semester Progress"},
+  {id:"timetable", label:"Timetable"},
+  {id:"settings", label:"Settings"}
+];
+let currentView="dashboard", currentParams={};
+
+function renderNav(){
+  document.getElementById("nav").innerHTML = NAV_ITEMS.map(n=>`
+    <button class="nav-item ${currentView===n.id?'active':''}" data-nav="${n.id}">${icon(n.id)}<span>${n.label}</span></button>
+  `).join("");
+  document.getElementById("sidebar-foot").innerHTML = `
+    <div class="streak-pill">${icon('flame')} <span>${state.stats.streak} day streak</span></div>
+  `;
+  const mobileMain = NAV_ITEMS.slice(0,4);
+  document.getElementById("bottom-nav").innerHTML = mobileMain.map(n=>`
+    <button class="bn-item ${currentView===n.id?'active':''}" data-nav="${n.id}">${icon(n.id)}<span>${n.label.split(' ')[0]}</span></button>
+  `).join("") + `<button class="bn-item more ${['assignments','revision','progress','timetable','settings'].includes(currentView)?'active':''}" data-nav="settings">${icon('more')}<span>More</span></button>`;
+  renderAccountWidget();
+}
+
+function navigate(view, params={}){
+  currentView=view; currentParams=params;
+  window.scrollTo(0,0);
+  renderNav();
+  renderView();
+}
+
+document.addEventListener("click", e=>{
+  const navBtn = e.target.closest("[data-nav]");
+  if(navBtn){ navigate(navBtn.dataset.nav); }
+});
+
+/* ---------- helpers ---------- */
+function subjectById(id){ return state.subjects.find(s=>s.id===id); }
+function subjectOptions(selectedId){
+  return state.subjects.filter(inActiveSem).map(s=>`<option value="${s.id}" ${s.id===selectedId?'selected':''}>${escapeHtml(s.name)}</option>`).join("");
+}
+function escapeHtml(str){ return (str||"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function fmtDate(d){ if(!d) return ""; const dt=new Date(d+"T00:00:00"); return dt.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+function daysUntil(d){ if(!d) return null; const dt=new Date(d+"T00:00:00"); const now=new Date(); now.setHours(0,0,0,0); return Math.round((dt-now)/86400000); }
+function dueLabel(d){
+  const n=daysUntil(d); if(n===null) return "";
+  if(n<0) return `Overdue ${Math.abs(n)}d`;
+  if(n===0) return "Due today";
+  if(n===1) return "Due tomorrow";
+  if(n<=7) return `Due in ${n} days`;
+  return `Due ${fmtDate(d)}`;
+}
+function urgencyClass(d,status){
+  if(status==="completed"||status==="Completed"||status==="done") return "done";
+  const n=daysUntil(d); if(n===null) return "";
+  if(n<0 || n<=1) return "urgent";
+  if(n<=3) return "doing";
+  return "";
+}
+function softDelete(collection, id, type){
+  const idx = state[collection].findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const item = state[collection][idx];
+  state[collection].splice(idx,1);
+  tombstone(id); // so a merge from another device's older snapshot doesn't bring it back
+  state.trash.push({id:uid(), type, collection, data:item, deletedAt:Date.now()});
+  save(); toast("Moved to Trash");
+}
+function restoreTrash(trashId){
+  const idx = state.trash.findIndex(t=>t.id===trashId);
+  if(idx<0) return;
+  const t = state.trash[idx];
+  t.data.updatedAt = Date.now();
+  if(state.tombstones) delete state.tombstones[t.data.id]; // un-delete: this id is wanted again
+  state[t.collection].push(t.data);
+  state.trash.splice(idx,1);
+  tombstone(trashId); // the trash entry itself is gone now
+  save(); toast("Restored"); renderView();
+}
+function purgeTrash(trashId){
+  const idx = state.trash.findIndex(t=>t.id===trashId);
+  if(idx<0) return;
+  const t = state.trash[idx];
+  if(t.type==="pdf" && t.data && t.data.id){
+    deletePdfBlob(t.data.id).catch(()=>{});
+    localPdfIds.delete(t.data.id);
+  }
+  state.trash.splice(idx,1);
+  tombstone(trashId);
+  save(); renderView();
+}
+
+/* ============================================================
+   VIEW: DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const sem = activeSemester();
+  const subs = state.subjects.filter(inActiveSem);
+  const upcoming = state.assignments.filter(inActiveSem).filter(a=>a.status!=="completed")
+    .sort((a,b)=>(a.dueDate||"9999").localeCompare(b.dueDate||"9999")).slice(0,3);
+  const goals = state.goals.filter(inActiveSem);
+  const sticky = state.quickNotes.slice().sort((a,b)=>b.pinned-a.pinned || b.createdAt-a.createdAt).slice(0,5);
+  const todayDow = new Date().getDay();
+  const dowMap=[6,0,1,2,3,4,5]; // convert JS sun=0 to Mon-first idx
+  const todayClasses = state.timetable.filter(inActiveSem).filter(t=>t.day===dowMap[todayDow]).sort((a,b)=>a.start.localeCompare(b.start));
+  const todayTasks = []; // planner tasks due today handled below if any exist
+
+  const pct = sem.totalWeeks ? Math.min(100, Math.round((sem.currentWeek/sem.totalWeeks)*100)) : 0;
+
+  document.getElementById("view").innerHTML = `
+    <div class="hero-greet">
+      <svg class="hero-deco" viewBox="0 0 160 160" fill="none" aria-hidden="true">
+        <path d="M80 145c0-48 10-74 36-101" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M80 145c0-48 -10-74 -36-101" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M80 103c19-8 32-23 36-42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M80 70c-15-6-25-19-28-36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="118" cy="44" r="4" fill="currentColor"/>
+        <circle cx="50" cy="34" r="3" fill="currentColor"/>
+      </svg>
+      <div class="eyebrow-row"><span class="date-chip">${todayLong()}</span></div>
+      <h1>Good ${greetPart()}!</h1>
+      <p>Ready for another study day?</p>
+      <div class="hero-streak">${icon('flame')}<span>${state.stats.streak} day streak</span></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="section-title"><h3>Today</h3></div>
+        ${todayClasses.length ? `<div class="today-list">${todayClasses.map(c=>{
+          const s=subjectById(c.subjectId);
+          return `<div class="today-item"><span class="time">${c.start}</span><span class="txt">${escapeHtml(s?s.name:'Class')} · ${escapeHtml(c.location||'')}</span></div>`;
+        }).join("")}</div>` : `<div class="empty" style="padding:18px;">No classes scheduled today.</div>`}
+      </div>
+      <div class="card">
+        <div class="section-title"><h3>Upcoming Assignments</h3><button class="link" data-nav="assignments">View all</button></div>
+        ${upcoming.length ? upcoming.map(a=>{
+          const s=subjectById(a.subjectId);
+          return `<div class="assign-row" style="padding:9px 0;">
+            <div class="info"><h4>${escapeHtml(a.name)}</h4>
+              <div class="meta-line"><span class="badge ${urgencyClass(a.dueDate,a.status)}">${dueLabel(a.dueDate)}</span>${s?`<span class="subject-chip"><span class="swatch" style="background:${s.color}"></span>${escapeHtml(s.name)}</span>`:''}</div>
+            </div>
+            <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${a.progress||0}%"></div></div><span>${a.progress||0}%</span></div>
+          </div>`;
+        }).join("") : `<div class="empty" style="padding:18px;">No assignments yet.</div>`}
+      </div>
+    </div>
+
+    <div class="section-title"><h3>My Subjects</h3><button class="link" data-nav="subjects">View All Subjects</button></div>
+    ${subs.length? `<div class="grid cols-3" style="margin-bottom:20px;">${subs.slice(0,3).map(subjectCardHtml).join("")}</div>`
+      : `<div class="empty" style="margin-bottom:20px;">${icon('subjects')}<span>No subjects yet. Add your first subject.</span><button class="btn small" data-action="add-subject">${icon('plus')}Add Subject</button></div>`}
+
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="section-title"><h3>Semester Progress</h3></div>
+        <p style="font-size:0.9rem; color:var(--text-soft); margin-bottom:8px;">${escapeHtml(sem.name)} · Week ${sem.currentWeek} / ${sem.totalWeeks}</p>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="card">
+        <div class="section-title"><h3>Semester Goals</h3><button class="link" data-action="add-goal">${icon('plus')} Add</button></div>
+        ${goals.length? `<div>${goals.map(goalRowHtml).join("")}</div>` : `<div class="empty" style="padding:14px;">No goals set yet.</div>`}
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:20px;"><h3>Quick Notes</h3></div>
+    <div class="corkboard">
+      ${sticky.map(stickyHtml).join("")}
+      <button class="add-sticky" data-action="add-sticky">${icon('plus')} New note</button>
+    </div>
+  `;
+}
+function greetPart(){ const h=new Date().getHours(); return h<12?"morning":h<18?"afternoon":"evening"; }
+function todayLong(){ return new Date().toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'}); }
+function subjectCardHtml(s){
+  const notesCount = state.notes.filter(n=>n.subjectId===s.id).length + state.pdfs.filter(p=>p.subjectId===s.id).length;
+  const assignCount = state.assignments.filter(a=>a.subjectId===s.id).length;
+  const topics = state.revisionTopics.filter(t=>t.subjectId===s.id);
+  const mastered = topics.filter(t=>t.status==="mastered").length;
+  const pct = topics.length? Math.round((mastered/topics.length)*100) : 0;
+  return `<div class="subject-card" data-open-subject="${s.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(s.name)}">
+    ${s.pinned?`<span class="pin-flag">${icon('pin')}</span>`:''}
+    <div class="bar" style="background:${s.color}"></div>
+    <h4>${escapeHtml(s.name)}</h4>
+    <div class="code">${escapeHtml(s.code||'')}</div>
+    <div class="meta"><span>${notesCount} Notes · ${assignCount} Assignments</span></div>
+    <div style="margin-top:8px;" class="progress-track"><div class="progress-fill" style="width:${pct}%; background:${s.color}"></div></div>
+    <div class="meta" style="margin-top:6px;"><span>${pct}% Complete</span></div>
+  </div>`;
+}
+function goalRowHtml(g){
+  return `<div class="goal-row ${g.done?'done':''}">
+    <button class="goal-check ${g.done?'on':''}" data-action="toggle-goal" data-id="${g.id}" aria-label="${g.done?'Mark goal not done':'Mark goal done'}" aria-pressed="${g.done}">${g.done?icon('check'):''}</button>
+    <span class="txt" style="flex:1; font-size:0.88rem;">${escapeHtml(g.text)}</span>
+    <button class="icon-btn tiny" data-action="del-goal" data-id="${g.id}" aria-label="Delete goal" style="border:none; background:none;">${icon('close')}</button>
+  </div>`;
+}
+function stickyHtml(n){
+  return `<div class="sticky">
+    <button class="del" data-action="del-sticky" data-id="${n.id}" aria-label="Delete quick note">✕</button>
+    <div contenteditable="true" role="textbox" aria-label="Quick note text" data-action="edit-sticky" data-id="${n.id}" style="outline:none; min-height:50px;">${escapeHtml(n.text)}</div>
+  </div>`;
+}
+
+/* ============================================================
+   VIEW: SUBJECTS
+   ============================================================ */
+function renderSubjects(){
+  const subs = state.subjects.filter(inActiveSem).slice().sort((a,b)=> (b.pinned-a.pinned) || (a.order-b.order));
+  document.getElementById("view").innerHTML = `
+    <div class="page-head">
+      <div><h1>Subjects</h1><p class="sub">Everything you're studying this semester.</p></div>
+      <button class="btn" data-action="add-subject">${icon('plus')}Add Subject</button>
+    </div>
+    ${subs.length? `<div class="grid cols-3">${subs.map(subjectCardFull).join("")}</div>` :
+      `<div class="empty">${icon('subjects')}<span>No subjects yet. Add your first subject.</span><button class="btn small" data-action="add-subject">${icon('plus')}Add Subject</button></div>`}
+  `;
+}
+function subjectCardFull(s){
+  return `<div class="subject-card hover-row">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;" data-open-subject="${s.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(s.name)}">
+      <div class="bar" style="background:${s.color}; flex:1;"></div>
+    </div>
+    <div data-open-subject="${s.id}">
+      <h4>${escapeHtml(s.name)}</h4>
+      <div class="code">${escapeHtml(s.code||'')}${s.lecturer?' · '+escapeHtml(s.lecturer):''}</div>
+    </div>
+    <div class="row-actions" style="position:absolute; top:14px; right:14px;">
+      <button class="icon-btn tiny" data-action="pin-subject" data-id="${s.id}" title="Pin" aria-label="${s.pinned?'Unpin subject':'Pin subject'}">${s.pinned?icon('pin'):icon('pinOutline')}</button>
+      <button class="icon-btn tiny" data-action="edit-subject" data-id="${s.id}" title="Edit" aria-label="Edit subject">${icon('edit')}</button>
+      <button class="icon-btn tiny" data-action="del-subject" data-id="${s.id}" title="Delete" aria-label="Delete subject">${icon('trash')}</button>
+    </div>
+  </div>`;
+}
+function subjectFormHtml(s){
+  s = s||{name:'',code:'',lecturer:'',group:'',credits:'',color:'#A8BFA3',icon:'📘'};
+  return `
+    <div class="modal-head"><h3>${s.id?'Edit Subject':'Add Subject'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <form id="subject-form">
+      <div class="field"><label>Subject name</label><input required name="name" value="${escapeHtml(s.name)}" placeholder="Food Chemistry"></div>
+      <div class="field-row">
+        <div class="field"><label>Subject code</label><input name="code" value="${escapeHtml(s.code)}" placeholder="FST101"></div>
+        <div class="field"><label>Credit hours</label><input name="credits" value="${escapeHtml(s.credits||'')}" placeholder="3"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Lecturer (optional)</label><input name="lecturer" value="${escapeHtml(s.lecturer||'')}"></div>
+        <div class="field"><label>Class/group (optional)</label><input name="group" value="${escapeHtml(s.group||'')}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Icon (emoji)</label><input name="icon" value="${escapeHtml(s.icon||'📘')}" maxlength="2"></div>
+        <div class="field"><label>Accent colour</label><input type="color" name="color" value="${s.color}" style="height:40px; padding:2px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" data-action="close-modal">Cancel</button>
+        <button type="submit" class="btn">${s.id?'Save Changes':'Add Subject'}</button>
+      </div>
+    </form>
+  `;
+}
+
+/* ============================================================
+   VIEW: SUBJECT DETAIL
+   ============================================================ */
+let subjectDetailTab = "notes";
+function renderSubjectDetail(id){
+  const s = subjectById(id);
+  if(!s){ navigate("subjects"); return; }
+  const tabs = [["notes","Lecture Notes"],["assignments","Assignments"],["tutorials","Tutorials"],["labs","Labs"],["resources","Resources"],["personal","Personal Notes"]];
+  const notes = state.notes.filter(n=>n.subjectId===id);
+  const pdfs = state.pdfs.filter(p=>p.subjectId===id);
+  const assigns = state.assignments.filter(a=>a.subjectId===id);
+
+  document.getElementById("view").innerHTML = `
+    <button class="btn ghost" data-nav="subjects" style="margin-bottom:10px;">${icon('chevL')} Subjects</button>
+    <div class="page-head">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:2rem;">${s.icon||'📘'}</span>
+        <div><h1>${escapeHtml(s.name)}</h1><p class="sub">${escapeHtml(s.code||'')}${s.lecturer?' · '+escapeHtml(s.lecturer):''}</p></div>
+      </div>
+      <button class="btn secondary" data-action="edit-subject" data-id="${s.id}">${icon('edit')}Edit</button>
+    </div>
+    <div class="tabs">${tabs.map(t=>`<button class="tab ${subjectDetailTab===t[0]?'active':''}" data-subtab="${t[0]}">${t[1]}</button>`).join("")}</div>
+    <div id="subtab-content"></div>
+  `;
+  document.querySelectorAll("[data-subtab]").forEach(b=>b.addEventListener("click",()=>{ subjectDetailTab=b.dataset.subtab; renderSubjectDetail(id); }));
+  renderSubjectTab(s, subjectDetailTab, {notes,pdfs,assigns});
+}
+function renderSubjectTab(s, tab, data){
+  const box = document.getElementById("subtab-content");
+  if(tab==="assignments"){
+    box.innerHTML = data.assigns.length ? `<div class="card">${data.assigns.map(assignRowHtml).join("")}</div>` :
+      emptyBlock("No assignments yet.", "add-assignment", s.id);
+    return;
+  }
+  if(tab==="personal" || tab==="notes"){
+    const filtered = data.notes.filter(n => tab==="personal" ? true : true); // both share personal note list for simplicity
+    box.innerHTML = `
+      <div style="display:flex; justify-content:flex-end; margin-bottom:12px; gap:8px;">
+        ${tab==="notes"?`<button class="btn secondary small" data-action="upload-pdf" data-subject="${s.id}">${icon('upload')}Upload PDF</button>`:''}
+        <button class="btn small" data-action="add-note" data-subject="${s.id}">${icon('plus')}Add Note</button>
+      </div>
+      ${tab==="notes" ? `<div class="grid cols-3" style="margin-bottom:16px;">${data.pdfs.map(pdfCardHtml).join("")}</div>` : ''}
+      ${filtered.length? `<div class="grid cols-3">${filtered.map(noteCardHtml).join("")}</div>` :
+        (data.pdfs.length? '' : emptyBlock("No notes uploaded yet.", "add-note", s.id))}
+    `;
+    return;
+  }
+  // tutorials/labs/resources -> generic personal notes filtered by chapter tag
+  const filtered = data.notes.filter(n=> (n.chapter||"").toLowerCase()===tab);
+  box.innerHTML = `
+    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+      <button class="btn small" data-action="add-note" data-subject="${s.id}" data-chapter="${tab}">${icon('plus')}Add ${tab[0].toUpperCase()+tab.slice(1,-1)}</button>
+    </div>
+    ${filtered.length? `<div class="grid cols-3">${filtered.map(noteCardHtml).join("")}</div>` : emptyBlock(`No ${tab} added yet.`, "add-note", s.id)}
+  `;
+}
+function emptyBlock(msg, action, subjectId){
+  return `<div class="empty"><span>${msg}</span><button class="btn small" data-action="${action}" data-subject="${subjectId||''}">${icon('plus')}Add</button></div>`;
+}
+function assignRowHtml(a){
+  const s=subjectById(a.subjectId);
+  return `<div class="assign-row hover-row">
+    <div class="info" data-action="edit-assignment" data-id="${a.id}" role="button" tabindex="0" aria-label="Edit ${escapeHtml(a.name)}">
+      <h4>${escapeHtml(a.name)}</h4>
+      <div class="meta-line">
+        <span class="badge ${urgencyClass(a.dueDate,a.status)}">${dueLabel(a.dueDate)}</span>
+        <span class="badge ${a.status}">${statusLabel(a.status)}</span>
+        ${s?`<span class="subject-chip"><span class="swatch" style="background:${s.color}"></span>${escapeHtml(s.name)}</span>`:''}
+      </div>
+    </div>
+    <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${a.progress||0}%"></div></div><span>${a.progress||0}%</span></div>
+    <div class="row-actions"><button class="icon-btn tiny" data-action="del-assignment" data-id="${a.id}" aria-label="Delete ${escapeHtml(a.name)}">${icon('trash')}</button></div>
+  </div>`;
+}
+function statusLabel(st){ return {todo:"To Do","in-progress":"In Progress",completed:"Completed"}[st]||st; }
+function noteCardHtml(n){
+  return `<div class="note-card hover-row" data-open-note="${n.id}" role="button" tabindex="0" aria-label="Open note ${escapeHtml(n.title)}">
+    <div style="display:flex; justify-content:space-between;"><h4>${escapeHtml(n.title)}</h4>
+      <div class="row-actions"><button class="icon-btn tiny" data-action="del-note" data-id="${n.id}" aria-label="Delete note">${icon('trash')}</button></div>
+    </div>
+    <div class="preview">${escapeHtml((n.content||'').slice(0,120))}</div>
+    <div class="meta-line">Updated ${new Date(n.updatedAt).toLocaleDateString()}</div>
+  </div>`;
+}
+function pdfCardHtml(p){
+  const sizeLabel = p.size ? ` · ${formatBytes(p.size)}` : "";
+  const available = localPdfIds.has(p.id);
+  const status = available ? "" : ` · <span style="color:var(--text-faint); font-style:italic;">Not stored on this device</span>`;
+  return `<div class="pdf-card hover-row" data-open-pdf="${p.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(p.filename)} in book reader">
+    <div class="pdf-thumb">${icon('pdf')}</div>
+    <div style="flex:1; min-width:0;"><h4 style="font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.filename)}</h4>
+      <div class="meta-line">${p.numPages||'?'} pages${sizeLabel}${status}</div>
+    </div>
+    <div class="row-actions"><button class="icon-btn tiny" data-action="del-pdf" data-id="${p.id}" aria-label="Delete PDF">${icon('trash')}</button></div>
+  </div>`;
+}
+
+/* ============================================================
+   VIEW: NOTES VAULT (global)
+   ============================================================ */
+let notesTab = "vault";
+function renderNotes(){
+  const tabs=[["vault","All Notes & PDFs"],["bookmarks","Bookmarks"]];
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Notes Vault</h1><p class="sub">Lecture PDFs and your personal notes, organised by subject.</p></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" data-action="upload-pdf">${icon('upload')}Upload PDF</button>
+        <button class="btn" data-action="add-note">${icon('plus')}Add Note</button>
+      </div>
+    </div>
+    <div class="tabs">${tabs.map(t=>`<button class="tab ${notesTab===t[0]?'active':''}" data-notestab="${t[0]}">${t[1]}</button>`).join("")}</div>
+    <div id="notes-tab-content"></div>
+  `;
+  document.querySelectorAll("[data-notestab]").forEach(b=>b.addEventListener("click",()=>{notesTab=b.dataset.notestab; renderNotes();}));
+  const box = document.getElementById("notes-tab-content");
+  if(notesTab==="bookmarks"){
+    const bms = state.bookmarksList;
+    box.innerHTML = bms.length ? `<div class="card">${bms.map(bookmarkRowHtml).join("")}</div>` : `<div class="empty">${icon('bookmark')}<span>No bookmarks yet.</span></div>`;
+    return;
+  }
+  const subs = state.subjects.filter(inActiveSem);
+  if(!subs.length && !state.notes.length && !state.pdfs.length){
+    box.innerHTML = `<div class="empty">${icon('notes')}<span>No notes uploaded yet.</span><button class="btn small" data-action="add-subject">Add a subject first</button></div>`;
+    return;
+  }
+  box.innerHTML = subs.map(s=>{
+    const notes=state.notes.filter(n=>n.subjectId===s.id);
+    const pdfs=state.pdfs.filter(p=>p.subjectId===s.id);
+    if(!notes.length && !pdfs.length) return "";
+    return `<div style="margin-bottom:24px;">
+      <div class="section-title"><h3><span class="swatch" style="background:${s.color}; display:inline-block; margin-right:6px;"></span>${escapeHtml(s.name)}</h3></div>
+      <div class="grid cols-3">${pdfs.map(pdfCardHtml).join("")}${notes.map(noteCardHtml).join("")}</div>
+    </div>`;
+  }).join("") || `<div class="empty">${icon('notes')}<span>No notes uploaded yet.</span></div>`;
+}
+function bookmarkRowHtml(b){
+  let label=b.label, sub="";
+  if(b.type==="pdf"){ const p=state.pdfs.find(x=>x.id===b.refId); sub = p? `${p.filename} · page ${b.page}` : "PDF removed"; }
+  else if(b.type==="note"){ const n=state.notes.find(x=>x.id===b.refId); sub = n? "Personal note" : "Note removed"; }
+  return `<div class="assign-row hover-row">
+    <div class="info" data-action="open-bookmark" data-id="${b.id}" role="button" tabindex="0" aria-label="Open bookmark ${escapeHtml(label)}"><h4>${escapeHtml(label)}</h4><div class="meta-line">${escapeHtml(sub)}</div></div>
+    <div class="row-actions"><button class="icon-btn tiny" data-action="del-bookmark" data-id="${b.id}" aria-label="Delete bookmark">${icon('trash')}</button></div>
+  </div>`;
+}
+
+/* ============================================================
+   VIEW: PLANNER
+   ============================================================ */
+let plannerFilter="all";
+function renderPlanner(){
+  const tasks = state.assignments.filter(inActiveSem); // reuse assignments+timetable as schedule source
+  const sessions = []; // (kept simple: planner surfaces assignments by date + timetable classes)
+  const allDated = state.assignments.filter(inActiveSem).filter(a=>a.dueDate)
+    .sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const grouped = {};
+  allDated.forEach(a=>{ (grouped[a.dueDate]=grouped[a.dueDate]||[]).push(a); });
+  const dates = Object.keys(grouped).sort();
+
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Study Planner</h1><p class="sub">Your study tasks and deadlines, in order.</p></div>
+      <button class="btn" data-action="add-assignment">${icon('plus')}Add Task</button>
+    </div>
+    ${dates.length? dates.map(d=>`
+      <div style="margin-bottom:18px;">
+        <div class="section-title"><h3>${fmtDate(d)} <span style="color:var(--text-faint); font-weight:500; font-size:0.8rem;">${dueLabel(d)}</span></h3></div>
+        <div class="card">${grouped[d].map(assignRowHtml).join("")}</div>
+      </div>`).join("") :
+      `<div class="empty">${icon('planner')}<span>Nothing scheduled yet.</span><button class="btn small" data-action="add-assignment">${icon('plus')}Add Task</button></div>`}
+  `;
+}
+
+/* ============================================================
+   VIEW: ASSIGNMENTS
+   ============================================================ */
+let assignFilter="all", assignSort="due";
+function renderAssignments(){
+  let list = state.assignments.filter(inActiveSem);
+  if(assignFilter!=="all") list = list.filter(a=>a.status===assignFilter);
+  list = list.slice().sort((a,b)=>{
+    if(assignSort==="due") return (a.dueDate||"9999").localeCompare(b.dueDate||"9999");
+    const order={high:0,medium:1,low:2}; return (order[a.priority]??3)-(order[b.priority]??3);
+  });
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Assignments</h1><p class="sub">Track every deadline in one place.</p></div>
+      <button class="btn" data-action="add-assignment">${icon('plus')}Add Assignment</button>
+    </div>
+    <div class="filter-pills">
+      ${["all","todo","in-progress","completed"].map(f=>`<button class="pill ${assignFilter===f?'active':''}" data-assignfilter="${f}">${f==="all"?"All":statusLabel(f)}</button>`).join("")}
+      <span style="flex:1"></span>
+      <select id="sort-select" style="padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--bg-elevated); font-size:0.8rem;">
+        <option value="due" ${assignSort==="due"?"selected":""}>Sort: Due date</option>
+        <option value="priority" ${assignSort==="priority"?"selected":""}>Sort: Priority</option>
+      </select>
+    </div>
+    ${list.length? `<div class="card">${list.map(assignRowHtml).join("")}</div>` :
+      `<div class="empty">${icon('assignments')}<span>No assignments yet.</span><button class="btn small" data-action="add-assignment">${icon('plus')}Add Assignment</button></div>`}
+  `;
+  document.querySelectorAll("[data-assignfilter]").forEach(b=>b.addEventListener("click",()=>{assignFilter=b.dataset.assignfilter; renderAssignments();}));
+  const sel=document.getElementById("sort-select");
+  if(sel) sel.addEventListener("change",()=>{assignSort=sel.value; renderAssignments();});
+}
+function assignmentFormHtml(a){
+  a = a||{name:'',subjectId:'',description:'',dueDate:'',progress:0,priority:'medium',status:'todo'};
+  return `
+    <div class="modal-head"><h3>${a.id?'Edit Assignment':'Add Assignment'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <form id="assignment-form">
+      <div class="field"><label>Assignment name</label><input required name="name" value="${escapeHtml(a.name)}"></div>
+      <div class="field"><label>Subject</label><select name="subjectId"><option value="">— none —</option>${subjectOptions(a.subjectId)}</select></div>
+      <div class="field"><label>Description</label><textarea name="description">${escapeHtml(a.description||'')}</textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Due date</label><input type="date" name="dueDate" value="${a.dueDate||''}"></div>
+        <div class="field"><label>Priority</label><select name="priority">
+          ${["low","medium","high"].map(p=>`<option value="${p}" ${a.priority===p?'selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join("")}
+        </select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Status</label><select name="status">
+          ${[["todo","To Do"],["in-progress","In Progress"],["completed","Completed"]].map(s=>`<option value="${s[0]}" ${a.status===s[0]?'selected':''}>${s[1]}</option>`).join("")}
+        </select></div>
+        <div class="field"><label>Progress (%)</label><input type="number" min="0" max="100" name="progress" value="${a.progress||0}"></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">${a.id?'Save Changes':'Add Assignment'}</button></div>
+    </form>
+  `;
+}
+
+/* ============================================================
+   VIEW: REVISION
+   ============================================================ */
+function renderRevision(){
+  const subs = state.subjects.filter(inActiveSem);
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Revision Tracker</h1><p class="sub">Track how well you know each topic.</p></div></div>
+    ${subs.length? subs.map(s=>{
+      const topics = state.revisionTopics.filter(t=>t.subjectId===s.id);
+      const mastered = topics.filter(t=>t.status==="mastered").length;
+      const pct = topics.length? Math.round(mastered/topics.length*100):0;
+      return `<div class="card" style="margin-bottom:16px;">
+        <div class="section-title">
+          <h3><span class="swatch" style="background:${s.color}; display:inline-block; margin-right:6px;"></span>${escapeHtml(s.name)}</h3>
+          <button class="link" data-action="add-topic" data-subject="${s.id}">${icon('plus')} Add topic</button>
+        </div>
+        <div class="progress-track" style="margin-bottom:12px;"><div class="progress-fill" style="width:${pct}%; background:${s.color}"></div></div>
+        ${topics.length? topics.map(topicRowHtml).join("") : `<div class="empty" style="padding:14px;">No topics added yet.</div>`}
+      </div>`;
+    }).join("") : `<div class="empty">${icon('revision')}<span>Add a subject first to start tracking revision.</span></div>`}
+  `;
+}
+function topicRowHtml(t){
+  const labels={"not-started":"Not Started",studied:"Studied","need-revision":"Need Revision",mastered:"Mastered"};
+  return `<div class="topic-row hover-row">
+    <span style="font-size:0.88rem;">${escapeHtml(t.chapter)}</span>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <select class="status-select" data-action="topic-status" data-id="${t.id}">
+        ${Object.entries(labels).map(([k,v])=>`<option value="${k}" ${t.status===k?'selected':''}>${v}</option>`).join("")}
+      </select>
+      <button class="icon-btn tiny" data-action="del-topic" data-id="${t.id}" style="border:none; background:none;">${icon('trash')}</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   VIEW: SEMESTER PROGRESS
+   ============================================================ */
+function renderProgress(){
+  const sem = activeSemester();
+  const subs = state.subjects.filter(inActiveSem);
+  const assigns = state.assignments.filter(inActiveSem);
+  const completedAssigns = assigns.filter(a=>a.status==="completed").length;
+  const topics = state.revisionTopics.filter(t=>subs.some(s=>s.id===t.subjectId));
+  const mastered = topics.filter(t=>t.status==="mastered").length;
+  const notesUploaded = state.notes.filter(inActiveSem).length + state.pdfs.filter(inActiveSem).length;
+  const classesTotal = state.timetable.filter(inActiveSem).length;
+  const pct = sem.totalWeeks? Math.min(100,Math.round(sem.currentWeek/sem.totalWeeks*100)):0;
+
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Semester Progress</h1><p class="sub">${escapeHtml(sem.name)} — Week ${sem.currentWeek} of ${sem.totalWeeks}</p></div>
+      <button class="btn secondary" data-action="edit-semester">${icon('edit')}Edit Semester</button>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div class="progress-track" style="height:10px;"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <p style="margin-top:8px; font-size:0.82rem; color:var(--text-soft);">${pct}% through the semester</p>
+    </div>
+    <div class="grid cols-3">
+      ${statCard("Assignments completed", `${completedAssigns}/${assigns.length||0}`)}
+      ${statCard("Topics mastered", `${mastered}/${topics.length||0}`)}
+      ${statCard("Notes uploaded", `${notesUploaded}`)}
+      ${statCard("Subjects", `${subs.length}`)}
+      ${statCard("Classes this week", `${classesTotal}`)}
+      ${statCard("Study streak", `${state.stats.streak} days`)}
+    </div>
+  `;
+}
+function statCard(label,val){
+  return `<div class="stat-card"><p>${label}</p><h2>${val}</h2></div>`;
+}
+
+/* ============================================================
+   VIEW: TIMETABLE
+   ============================================================ */
+const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+function renderTimetable(){
+  const entries = state.timetable.filter(inActiveSem);
+  const startHour=7, endHour=20;
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Class Timetable</h1><p class="sub">Your weekly schedule at a glance.</p></div>
+      <button class="btn" data-action="add-timetable">${icon('plus')}Add Class</button>
+    </div>
+    ${entries.length ? `<div class="ttable-scroll"><div class="ttable">
+      <div></div>${DOW.map(d=>`<div class="tt-head">${d}</div>`).join("")}
+      ${Array.from({length:endHour-startHour},(_,i)=>startHour+i).map(h=>`
+        <div class="tt-hour">${h}:00</div>
+        ${DOW.map((d,di)=>`<div class="tt-cell" data-hourcell="${di}-${h}"></div>`).join("")}
+      `).join("")}
+    </div></div>
+    <div style="margin-top:18px;" class="card">${entries.sort((a,b)=>a.day-b.day || a.start.localeCompare(b.start)).map(timetableRowHtml).join("")}</div>
+    ` : `<div class="empty">${icon('timetable')}<span>No classes scheduled yet.</span><button class="btn small" data-action="add-timetable">${icon('plus')}Add Class</button></div>`}
+  `;
+  // position blocks
+  entries.forEach(e=>{
+    const startH=parseInt(e.start.split(":")[0]), startM=parseInt(e.start.split(":")[1]||0);
+    const endH=parseInt(e.end.split(":")[0]), endM=parseInt(e.end.split(":")[1]||0);
+    const s=subjectById(e.subjectId);
+    for(let h=startH; h<endH || (h===startH && endH<=startH); h++){
+      const cell=document.querySelector(`[data-hourcell="${e.day}-${h}"]`);
+      if(!cell) continue;
+      if(h===startH){
+        const block=document.createElement("div");
+        block.className="tt-block";
+        block.style.background = s? s.color : "var(--sage-deep)";
+        block.style.top = (startM/60*100)+"%";
+        const durH = (endH+endM/60)-(startH+startM/60);
+        block.style.height = Math.max(28, durH*54)+"px";
+        block.textContent = (s?s.name:"Class");
+        block.title = `${e.start}–${e.end} · ${e.location||''}`;
+        block.dataset.action="edit-timetable"; block.dataset.id=e.id;
+        cell.appendChild(block);
+      }
+    }
+  });
+}
+function timetableRowHtml(e){
+  const s=subjectById(e.subjectId);
+  return `<div class="assign-row hover-row">
+    <div class="info" data-action="edit-timetable" data-id="${e.id}" role="button" tabindex="0" aria-label="Edit class ${s?escapeHtml(s.name):''}"><h4>${s?escapeHtml(s.name):'Class'}</h4>
+      <div class="meta-line">${DOW[e.day]} · ${e.start}–${e.end}${e.location?' · '+escapeHtml(e.location):''}</div>
+    </div>
+    <div class="row-actions"><button class="icon-btn tiny" data-action="del-timetable" data-id="${e.id}" aria-label="Delete class">${icon('trash')}</button></div>
+  </div>`;
+}
+
+/* ============================================================
+   VIEW: SETTINGS
+   ============================================================ */
+let settingsTab="appearance";
+function renderSettings(){
+  const tabs=[["appearance","Appearance"],["account","Account"],["semester","Semesters"],["reminders","Reminders"],["data","Data & Trash"],["about","About"]];
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><h1>Settings</h1></div>
+    <div class="tabs">${tabs.map(t=>`<button class="tab ${settingsTab===t[0]?'active':''}" data-settab="${t[0]}">${t[1]}</button>`).join("")}</div>
+    <div id="settings-content"></div>
+  `;
+  document.querySelectorAll("[data-settab]").forEach(b=>b.addEventListener("click",()=>{settingsTab=b.dataset.settab; renderSettings();}));
+  const box=document.getElementById("settings-content");
+  if(settingsTab==="appearance"){
+    box.innerHTML = `<div class="card" style="max-width:420px;">
+      <div class="field"><label>Theme</label>
+        <div style="display:flex; gap:8px;">
+          ${[["light","☀️ Light"],["dark","🌙 Dark"],["system","🌓 System"]].map(([v,l])=>`
+            <button class="pill ${state.settings.theme===v?'active':''}" data-theme-set="${v}" style="flex:1;">${l}</button>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="card" style="max-width:420px; margin-top:16px;"><h3 style="font-size:0.95rem; margin-bottom:10px;">Install App</h3><div id="install-section">${installSectionHtml()}</div></div>`;
+    box.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
+      state.settings.theme=b.dataset.themeSet; applyTheme(); save(); renderSettings();
+    }));
+    bindInstallSection();
+    return;
+  }
+  if(settingsTab==="account"){
+    if(!FIREBASE_READY){
+      box.innerHTML = `<div class="card" style="max-width:460px;">
+        <p style="font-size:0.9rem; color:var(--text-soft); line-height:1.6;">Google Sign-In hasn't been configured for this deployment yet — data stays in this browser only. Add your Firebase project's config to <code>firebase-config.js</code> to enable syncing across devices.</p>
+      </div>`;
+      return;
+    }
+    if(fbUser){
+      box.innerHTML = `<div class="card" style="max-width:460px;">
+        <div style="display:flex; align-items:center; gap:13px; margin-bottom:16px;">
+          ${fbUser.photoURL?`<img src="${fbUser.photoURL}" alt="" style="width:44px;height:44px;border-radius:50%;">`:`<div class="account-avatar-lg">${escapeHtml((fbUser.displayName||fbUser.email||"?").trim()[0].toUpperCase())}</div>`}
+          <div><strong style="font-size:0.92rem;">${escapeHtml(fbUser.displayName||"")}</strong><div style="font-size:0.8rem; color:var(--text-soft);">${escapeHtml(fbUser.email||"")}</div></div>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-soft); margin-bottom:16px;">${cloudSynced?"Synced — your data follows you to any device you sign in on.":"Signed in, but the last sync attempt failed."}</p>
+        <button class="btn danger small" id="settings-signout">Sign out</button>
+      </div>`;
+      document.getElementById("settings-signout").addEventListener("click", signOutGoogle);
+    } else {
+      box.innerHTML = `<div class="card" style="max-width:460px;">
+        <p style="font-size:0.9rem; color:var(--text-soft); margin-bottom:16px;">Sign in with Google to back up your data and pick up right where you left off on any device.</p>
+        <button class="btn secondary" id="settings-signin">${googleGIcon()}<span>Sign in with Google</span></button>
+      </div>`;
+      document.getElementById("settings-signin").addEventListener("click", signInWithGoogle);
+    }
+    return;
+  }
+  if(settingsTab==="semester"){
+    const active=state.semesters.filter(s=>!s.archived), archived=state.semesters.filter(s=>s.archived);
+    box.innerHTML = `
+      <div class="section-title"><h3>Active</h3><button class="link" data-action="new-semester">${icon('plus')} New Semester</button></div>
+      <div class="card" style="margin-bottom:18px;">${active.map(s=>`
+        <div class="topic-row"><span>${escapeHtml(s.name)} — Week ${s.currentWeek}/${s.totalWeeks} ${s.id===state.activeSemesterId?'<span class="badge done">Current</span>':''}</span>
+          <div style="display:flex; gap:8px;">
+            ${s.id!==state.activeSemesterId?`<button class="btn small secondary" data-action="switch-semester" data-id="${s.id}">Switch</button>`:''}
+            <button class="btn small secondary" data-action="edit-semester" data-id="${s.id}">Edit</button>
+            <button class="btn small danger" data-action="archive-semester" data-id="${s.id}">Archive</button>
+          </div>
+        </div>`).join("")}</div>
+      <div class="section-title"><h3>Archived</h3></div>
+      ${archived.length? `<div class="card">${archived.map(s=>`<div class="topic-row"><span>${escapeHtml(s.name)}</span><span class="badge">Archived</span></div>`).join("")}</div>` : `<div class="empty" style="padding:16px;">No archived semesters yet.</div>`}
+    `;
+    return;
+  }
+  if(settingsTab==="reminders"){
+    box.innerHTML = `<div class="card" style="max-width:420px;">
+      <div class="field"><label>Remind me about deadlines this many days ahead</label>
+        <input type="number" min="1" max="14" id="reminder-days" value="${state.settings.reminderDays}">
+      </div>
+      <button class="btn small" id="save-reminder">Save</button>
+    </div>`;
+    document.getElementById("save-reminder").addEventListener("click",()=>{
+      state.settings.reminderDays = parseInt(document.getElementById("reminder-days").value)||3;
+      save(); toast("Reminder setting saved");
+    });
+    return;
+  }
+  if(settingsTab==="data"){
+    box.innerHTML = `
+      <div class="section-title"><h3>Trash</h3></div>
+      ${state.trash.length? `<div class="card">${state.trash.map(t=>`
+        <div class="topic-row"><span>${escapeHtml(trashLabel(t))}</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn small secondary" data-action="restore-trash" data-id="${t.id}">Restore</button>
+            <button class="btn small danger" data-action="purge-trash" data-id="${t.id}">Delete forever</button>
+          </div>
+        </div>`).join("")}</div>` : `<div class="empty" style="padding:16px;">Trash is empty.</div>`}
+      <div class="section-title" style="margin-top:20px;"><h3>Storage</h3></div>
+      <div class="card"><p style="font-size:0.85rem; color:var(--text-soft);">${fbUser? "Your subjects, notes, assignments and progress are backed up to your Google account and cached in this browser for offline use." : "Notelylog saves everything to this browser's local storage. Sign in with Google (in Settings → Account) to back it up and sync it across devices."} Uploaded PDFs are always kept on this device only, in your browser's local file storage — they don't sync to other devices.</p></div>
+      <div class="section-title" style="margin-top:20px;"><h3>Local PDFs</h3></div>
+      <div class="card" id="local-pdf-stats"><p style="font-size:0.85rem; color:var(--text-soft);">Checking…</p></div>
+      <div class="section-title" style="margin-top:20px;"><h3>Backup</h3></div>
+      <div class="card">
+        <p style="font-size:0.85rem; color:var(--text-soft); margin-bottom:14px;">Download everything — your study data and the actual PDF files on this device — as one file you can keep or move to another computer.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn secondary small" id="export-backup-btn">Export Local Backup</button>
+          <button class="btn secondary small" id="import-backup-btn">Import Local Backup</button>
+        </div>
+      </div>
+    `;
+    renderLocalPdfStats();
+    document.getElementById("export-backup-btn").addEventListener("click", exportLocalBackup);
+    document.getElementById("import-backup-btn").addEventListener("click", triggerImportBackup);
+    return;
+  }
+  if(settingsTab==="about"){
+    box.innerHTML = `<div class="card" style="max-width:480px;"><h3 style="margin-bottom:8px;">About notelylog</h3>
+      <p style="font-size:0.88rem; color:var(--text-soft); line-height:1.6;">A calm study desk for keeping subjects, notes, PDFs, assignments and revision all in one place — built to feel like a study journal, not a corporate LMS.</p></div>`;
+    return;
+  }
+}
+function trashLabel(t){
+  const d=t.data;
+  return d.name || d.title || d.filename || d.text || d.chapter || "Item";
+}
+
+/* ============================================================
+   LOCAL PDF STORAGE INFO + BACKUP EXPORT/IMPORT
+   ============================================================ */
+async function renderLocalPdfStats(){
+  const box = document.getElementById("local-pdf-stats");
+  if(!box) return;
+  try{
+    const blobs = await getAllPdfBlobs();
+    const totalBytes = blobs.reduce((sum,b)=>sum+(b.size||0),0);
+    let quotaLine = "";
+    if(navigator.storage && navigator.storage.estimate){
+      try{
+        const est = await navigator.storage.estimate();
+        if(est && est.quota) quotaLine = `<br>${formatBytes(est.usage||0)} of ${formatBytes(est.quota)} browser storage used`;
+      }catch(e){}
+    }
+    box.innerHTML = `<p style="font-size:0.85rem; color:var(--text-soft); line-height:1.6;">Local PDFs: ${blobs.length}<br>PDF storage used: ${formatBytes(totalBytes)}<br>Storage location: this device/browser${quotaLine}</p>`;
+  }catch(err){
+    box.innerHTML = `<p style="font-size:0.85rem; color:var(--text-soft);">Couldn't read local PDF storage info.</p>`;
+  }
+}
+
+async function exportLocalBackup(){
+  if(typeof JSZip === "undefined"){ toast("Backup tool didn't load — check your connection and try again"); return; }
+  try{
+    const zip = new JSZip();
+    zip.file("data.json", JSON.stringify({
+      app: "Notelylog",
+      backupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      state: state
+    }, null, 2));
+    const blobs = await getAllPdfBlobs();
+    const pdfsFolder = zip.folder("pdfs");
+    blobs.forEach(rec=> pdfsFolder.file(`${rec.id}.pdf`, rec.blob));
+    const content = await zip.generateAsync({type:"blob"});
+    const url = URL.createObjectURL(content);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `notelylog-backup-${new Date().toISOString().slice(0,10)}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    toast("Backup downloaded");
+  }catch(err){
+    console.warn("Backup export failed:", err);
+    toast("Couldn't create a backup — please try again");
+  }
+}
+
+function triggerImportBackup(){
+  if(typeof JSZip === "undefined"){ toast("Backup tool didn't load — check your connection and try again"); return; }
+  const input=document.createElement("input");
+  input.type="file"; input.accept=".zip,application/zip";
+  input.onchange = async ()=>{
+    const file=input.files[0]; if(!file) return;
+    try{
+      const zip = await JSZip.loadAsync(file);
+      const dataEntry = zip.file("data.json");
+      if(!dataEntry) throw new Error("missing data.json");
+      const parsed = JSON.parse(await dataEntry.async("string"));
+      if(parsed.app!=="Notelylog" || !parsed.state) throw new Error("not a notelylog backup");
+
+      if(!confirm("Importing this backup will replace your current Notelylog data on this device. This can't be undone. Continue?")) return;
+
+      state = mergeWithDefaults(parsed.state);
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+
+      const pdfEntries = zip.file(/^pdfs\/.*\.pdf$/i);
+      for(const entry of pdfEntries){
+        const id = entry.name.replace(/^pdfs\//i, "").replace(/\.pdf$/i, "");
+        try{
+          const blob = await entry.async("blob");
+          await savePdfBlob(id, blob);
+          localPdfIds.add(id);
+        }catch(e){ console.warn("Couldn't restore PDF", entry.name, e); }
+      }
+      save();
+      toast("Backup restored");
+      renderView();
+    }catch(err){
+      console.warn("Backup import failed:", err);
+      toast("Couldn't import this backup — it may not be a valid Notelylog file");
+    }
+  };
+  input.click();
+}
+
+/* ============================================================
+   MODALS / FORMS — subjects, notes, assignments, topics, timetable, goals
+   ============================================================ */
+document.addEventListener("submit", e=>{
+  if(e.target.id==="subject-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id = e.target.dataset.editId;
+    if(id){
+      const s=subjectById(id);
+      Object.assign(s,{name:f.get("name"),code:f.get("code"),lecturer:f.get("lecturer"),group:f.get("group"),credits:f.get("credits"),icon:f.get("icon"),color:f.get("color"),updatedAt:Date.now()});
+    } else {
+      state.subjects.push({id:uid(), semesterId:state.activeSemesterId, name:f.get("name"), code:f.get("code"), lecturer:f.get("lecturer"), group:f.get("group"), credits:f.get("credits"), icon:f.get("icon")||"📘", color:f.get("color")||"#A8BFA3", pinned:false, order:state.subjects.length, createdAt:Date.now(), updatedAt:Date.now()});
+    }
+    save(); closeModal(); renderView(); toast(id?"Subject updated":"Subject added");
+  }
+  if(e.target.id==="assignment-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id=e.target.dataset.editId;
+    const payload={name:f.get("name"), subjectId:f.get("subjectId")||null, description:f.get("description"), dueDate:f.get("dueDate")||null, priority:f.get("priority"), status:f.get("status"), progress:Math.max(0,Math.min(100,parseInt(f.get("progress"))||0))};
+    if(id){ Object.assign(state.assignments.find(a=>a.id===id), payload, {updatedAt:Date.now()}); }
+    else { state.assignments.push({id:uid(), semesterId:state.activeSemesterId, createdAt:Date.now(), updatedAt:Date.now(), ...payload}); }
+    save(); closeModal(); renderView(); toast(id?"Assignment updated":"Assignment added");
+  }
+  if(e.target.id==="note-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id=e.target.dataset.editId;
+    const payload={title:f.get("title"), subjectId:f.get("subjectId")||null, chapter:f.get("chapter")||"", content:f.get("content")||""};
+    if(id){ const n=state.notes.find(x=>x.id===id); Object.assign(n,payload); n.updatedAt=Date.now(); }
+    else { state.notes.push({id:uid(), semesterId:state.activeSemesterId, createdAt:Date.now(), updatedAt:Date.now(), ...payload}); }
+    save(); closeModal(); renderView(); toast(id?"Note saved":"Note added");
+  }
+  if(e.target.id==="topic-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    state.revisionTopics.push({id:uid(), semesterId:state.activeSemesterId, subjectId:e.target.dataset.subject, chapter:f.get("chapter"), status:"not-started", createdAt:Date.now(), updatedAt:Date.now()});
+    save(); closeModal(); renderView(); toast("Topic added");
+  }
+  if(e.target.id==="timetable-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id=e.target.dataset.editId;
+    const payload={subjectId:f.get("subjectId"), day:parseInt(f.get("day")), start:f.get("start"), end:f.get("end"), location:f.get("location"), lecturer:f.get("lecturer")};
+    if(id){ Object.assign(state.timetable.find(t=>t.id===id), payload, {updatedAt:Date.now()}); }
+    else { state.timetable.push({id:uid(), semesterId:state.activeSemesterId, createdAt:Date.now(), updatedAt:Date.now(), ...payload}); }
+    save(); closeModal(); renderView(); toast(id?"Class updated":"Class added");
+  }
+  if(e.target.id==="goal-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    state.goals.push({id:uid(), semesterId:state.activeSemesterId, text:f.get("text"), done:false, createdAt:Date.now(), updatedAt:Date.now()});
+    save(); closeModal(); renderView(); toast("Goal added");
+  }
+  if(e.target.id==="semester-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id=e.target.dataset.editId;
+    if(id){ const s=state.semesters.find(x=>x.id===id); s.name=f.get("name"); s.totalWeeks=parseInt(f.get("totalWeeks"))||17; s.currentWeek=parseInt(f.get("currentWeek"))||1; s.updatedAt=Date.now(); }
+    save(); closeModal(); renderView(); toast("Semester saved");
+  }
+});
+
+/* ---------- delegated action clicks ---------- */
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-action],[data-open-subject],[data-open-note],[data-open-pdf]");
+  if(!t) return;
+
+  if(t.dataset.openSubject){ navigate("subject-detail", {id:t.dataset.openSubject}); renderSubjectDetail(t.dataset.openSubject); return; }
+  if(t.dataset.openNote){ openNoteModal(state.notes.find(n=>n.id===t.dataset.openNote)); return; }
+  if(t.dataset.openPdf){ openReader(t.dataset.openPdf); return; }
+
+  const a = t.dataset.action;
+  if(!a) return;
+
+  if(a==="close-modal"){ closeModal(); return; }
+  if(a==="add-subject"){ openModal(subjectFormHtml()); document.getElementById("subject-form").addEventListener("submit",()=>{}); return; }
+  if(a==="edit-subject"){ openModal(subjectFormHtml(subjectById(t.dataset.id))); const f=document.getElementById("subject-form"); f.dataset.editId=t.dataset.id; return; }
+  if(a==="pin-subject"){ const s=subjectById(t.dataset.id); s.pinned=!s.pinned; s.updatedAt=Date.now(); save(); renderView(); return; }
+  if(a==="del-subject"){ if(confirm("Move this subject to Trash?")) softDelete("subjects", t.dataset.id, "subject"); renderView(); return; }
+
+  if(a==="add-assignment"){ openModal(assignmentFormHtml()); return; }
+  if(a==="edit-assignment"){ openModal(assignmentFormHtml(state.assignments.find(x=>x.id===t.dataset.id))); document.getElementById("assignment-form").dataset.editId=t.dataset.id; return; }
+  if(a==="del-assignment"){ softDelete("assignments", t.dataset.id, "assignment"); renderView(); return; }
+
+  if(a==="add-note"){ openModal(noteFormHtml(null, t.dataset.subject, t.dataset.chapter)); return; }
+  if(a==="del-note"){ softDelete("notes", t.dataset.id, "note"); renderView(); return; }
+  if(a==="del-pdf"){ softDelete("pdfs", t.dataset.id, "pdf"); renderView(); return; }
+  if(a==="upload-pdf"){ triggerPdfUpload(t.dataset.subject); return; }
+
+  if(a==="add-topic"){ openModal(topicFormHtml(t.dataset.subject)); return; }
+  if(a==="topic-status"){ /* handled by change listener */ return; }
+  if(a==="del-topic"){ softDelete("revisionTopics", t.dataset.id, "topic"); renderView(); return; }
+
+  if(a==="add-timetable"){ openModal(timetableFormHtml()); return; }
+  if(a==="edit-timetable"){ openModal(timetableFormHtml(state.timetable.find(x=>x.id===t.dataset.id))); document.getElementById("timetable-form").dataset.editId=t.dataset.id; return; }
+  if(a==="del-timetable"){ softDelete("timetable", t.dataset.id, "class"); renderView(); return; }
+
+  if(a==="add-goal"){ openModal(`<div class="modal-head"><h3>Add Goal</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <form id="goal-form"><div class="field"><label>Goal</label><input required name="text" placeholder="Finish all lecture notes"></div>
+    <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">Add Goal</button></div></form>`); return; }
+  if(a==="toggle-goal"){ const g=state.goals.find(x=>x.id===t.dataset.id); g.done=!g.done; g.updatedAt=Date.now(); save(); renderView(); return; }
+  if(a==="del-goal"){ tombstone(t.dataset.id); state.goals=state.goals.filter(x=>x.id!==t.dataset.id); save(); renderView(); return; }
+
+  if(a==="add-sticky"){ state.quickNotes.push({id:uid(), text:"", pinned:false, createdAt:Date.now()}); save(); renderView(); return; }
+  if(a==="del-sticky"){ tombstone(t.dataset.id); state.quickNotes=state.quickNotes.filter(x=>x.id!==t.dataset.id); save(); renderView(); return; }
+
+  if(a==="new-semester"){ openModal(semesterFormHtml()); return; }
+  if(a==="edit-semester"){ const s=state.semesters.find(x=>x.id===t.dataset.id)||activeSemester(); openModal(semesterFormHtml(s)); document.getElementById("semester-form").dataset.editId=s.id; return; }
+  if(a==="switch-semester"){ state.activeSemesterId=t.dataset.id; save(); renderView(); toast("Switched semester"); return; }
+  if(a==="archive-semester"){
+    if(confirm("Archive this semester? It stays accessible but won't clutter your active dashboard.")){
+      const s=state.semesters.find(x=>x.id===t.dataset.id); s.archived=true;
+      const remaining = state.semesters.filter(x=>!x.archived);
+      if(remaining.length){ state.activeSemesterId=remaining[0].id; }
+      else { const ns={id:uid(), name:"New Semester", totalWeeks:17, currentWeek:1, archived:false, createdAt:Date.now()}; state.semesters.push(ns); state.activeSemesterId=ns.id; }
+      save(); renderView(); toast("Semester archived");
+    }
+    return;
+  }
+  if(a==="restore-trash"){ restoreTrash(t.dataset.id); return; }
+  if(a==="purge-trash"){ if(confirm("Permanently delete this item?")) purgeTrash(t.dataset.id); return; }
+
+  if(a==="open-bookmark"){
+    const b=state.bookmarksList.find(x=>x.id===t.dataset.id);
+    if(!b) return;
+    if(b.type==="pdf" && state.pdfs.some(p=>p.id===b.refId)){ openReader(b.refId); }
+    else if(b.type==="note"){ const n=state.notes.find(x=>x.id===b.refId); if(n) openNoteModal(n); else toast("That note was removed"); }
+    return;
+  }
+  if(a==="del-bookmark"){ tombstone(t.dataset.id); state.bookmarksList=state.bookmarksList.filter(x=>x.id!==t.dataset.id); save(); renderView(); return; }
+});
+
+/* keyboard activation for card-like elements marked role="button" */
+document.addEventListener("keydown", e=>{
+  if((e.key==="Enter" || e.key===" ") && e.target.matches('[role="button"]')){
+    e.preventDefault();
+    e.target.click();
+  }
+});
+
+document.addEventListener("change", e=>{
+  if(e.target.dataset && e.target.dataset.action==="topic-status"){
+    const topic = state.revisionTopics.find(x=>x.id===e.target.dataset.id);
+    topic.status = e.target.value; topic.updatedAt = Date.now(); save(); renderView();
+  }
+});
+document.addEventListener("blur", e=>{
+  if(e.target.dataset && e.target.dataset.action==="edit-sticky"){
+    const n=state.quickNotes.find(x=>x.id===e.target.dataset.id);
+    if(n){ n.text = e.target.textContent; n.updatedAt = Date.now(); save(); }
+  }
+}, true);
+
+function noteFormHtml(n, subjectId, chapter){
+  n = n || {title:'', subjectId:subjectId||'', chapter:chapter||'', content:''};
+  return `
+    <div class="modal-head"><h3>${n.id?'Edit Note':'Add Note'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <form id="note-form">
+      <div class="field"><label>Title</label><input required name="title" value="${escapeHtml(n.title)}"></div>
+      <div class="field-row">
+        <div class="field"><label>Subject</label><select name="subjectId"><option value="">— none —</option>${subjectOptions(n.subjectId)}</select></div>
+        <div class="field"><label>Chapter/topic</label><input name="chapter" value="${escapeHtml(n.chapter||'')}"></div>
+      </div>
+      <div class="field"><label>Content</label><textarea name="content" rows="6">${escapeHtml(n.content||'')}</textarea></div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">${n.id?'Save':'Add Note'}</button></div>
+    </form>
+  `;
+}
+function openNoteModal(n){
+  openModal(noteFormHtml(n));
+  if(n) document.getElementById("note-form").dataset.editId=n.id;
+}
+function topicFormHtml(subjectId){
+  return `<div class="modal-head"><h3>Add Topic</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+  <form id="topic-form" data-subject="${subjectId}">
+    <div class="field"><label>Chapter/topic name</label><input required name="chapter" placeholder="Chapter 3"></div>
+    <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">Add</button></div>
+  </form>`;
+}
+function timetableFormHtml(e){
+  e = e||{subjectId:'',day:0,start:'09:00',end:'10:00',location:'',lecturer:''};
+  return `<div class="modal-head"><h3>${e.id?'Edit Class':'Add Class'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+  <form id="timetable-form">
+    <div class="field"><label>Subject</label><select required name="subjectId">${subjectOptions(e.subjectId)}</select></div>
+    <div class="field-row">
+      <div class="field"><label>Day</label><select name="day">${DOW.map((d,i)=>`<option value="${i}" ${e.day===i?'selected':''}>${d}</option>`).join("")}</select></div>
+      <div class="field"><label>Location</label><input name="location" value="${escapeHtml(e.location||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Start time</label><input type="time" name="start" value="${e.start}"></div>
+      <div class="field"><label>End time</label><input type="time" name="end" value="${e.end}"></div>
+    </div>
+    <div class="field"><label>Lecturer (optional)</label><input name="lecturer" value="${escapeHtml(e.lecturer||'')}"></div>
+    <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">${e.id?'Save':'Add Class'}</button></div>
+  </form>`;
+}
+function semesterFormHtml(s){
+  s = s || {name:'', totalWeeks:17, currentWeek:1};
+  return `<div class="modal-head"><h3>${s.id?'Edit Semester':'New Semester'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+  <form id="semester-form">
+    <div class="field"><label>Semester name</label><input required name="name" value="${escapeHtml(s.name)}" placeholder="Semester 2"></div>
+    <div class="field-row">
+      <div class="field"><label>Total weeks</label><input type="number" min="1" name="totalWeeks" value="${s.totalWeeks}"></div>
+      <div class="field"><label>Current week</label><input type="number" min="1" name="currentWeek" value="${s.currentWeek}"></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">Save</button></div>
+  </form>`;
+}
+document.addEventListener("submit", e=>{
+  if(e.target.id==="semester-form" && !e.target.dataset.editId){
+    // new semester (only when opened via "new-semester")
+  }
+});
+// handle new-semester create (separate because same form id used for edit)
+document.getElementById("modal-backdrop").addEventListener("submit", e=>{
+  if(e.target.id==="semester-form" && !e.target.dataset.editId){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const ns={id:uid(), name:f.get("name"), totalWeeks:parseInt(f.get("totalWeeks"))||17, currentWeek:parseInt(f.get("currentWeek"))||1, archived:false, createdAt:Date.now()};
+    state.semesters.push(ns); state.activeSemesterId=ns.id;
+    save(); closeModal(); renderView(); toast("New semester created");
+  }
+}, true);
+
+/* ============================================================
+   PDF UPLOAD + BOOK READER
+   ============================================================ */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+function triggerPdfUpload(subjectId){
+  const input=document.createElement("input");
+  input.type="file"; input.accept="application/pdf";
+  input.onchange = async ()=>{
+    const file=input.files[0]; if(!file) return;
+    const looksLikePdf = file.type==="application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if(!looksLikePdf){ toast("Please choose a PDF file"); return; }
+
+    const pdfId = uid();
+    const tempUrl = URL.createObjectURL(file);
+    let numPages=null;
+    try{
+      const doc = await pdfjsLib.getDocument({url:tempUrl}).promise;
+      numPages = doc.numPages;
+    }catch(err){}
+    URL.revokeObjectURL(tempUrl);
+
+    try{
+      await savePdfBlob(pdfId, file, file.name);
+    }catch(err){
+      toast("Not enough local storage available for this PDF.");
+      return;
+    }
+    localPdfIds.add(pdfId);
+
+    const sid = subjectId || (currentView==="subject-detail" ? currentParams.id : (state.subjects.filter(inActiveSem)[0]||{}).id);
+    const record = {id:pdfId, semesterId:state.activeSemesterId, subjectId:sid||null, filename:file.name, size:file.size, numPages, uploadedAt:Date.now(), updatedAt:Date.now(), bookmarks:[]};
+    state.pdfs.push(record);
+    save(); renderView(); toast("PDF uploaded");
+  };
+  input.click();
+}
+
+/* ---- reader state ---- */
+let reader = { pdfId:null, doc:null, spread:0, scale:1, isMobile:false, fullscreen:false, objectUrl:null };
+function isMobileView(){ return window.matchMedia("(max-width:760px)").matches; }
+
+async function openReader(pdfId){
+  const rec = state.pdfs.find(p=>p.id===pdfId);
+  if(!rec) return;
+
+  const available = localPdfIds.has(pdfId) || await hasPdfBlob(pdfId);
+  if(!available){ openMissingPdfModal(rec); return; }
+
+  let blobRecord;
+  try{ blobRecord = await getPdfBlob(pdfId); }catch(err){ blobRecord=null; }
+  if(!blobRecord || !blobRecord.blob){ openMissingPdfModal(rec); return; }
+
+  reader = { pdfId, doc:null, spread:0, scale:1, isMobile:isMobileView(), objectUrl:null };
+  const objectUrl = URL.createObjectURL(blobRecord.blob);
+  reader.objectUrl = objectUrl;
+  document.getElementById("reader-root").innerHTML = readerShellHtml(rec);
+  document.getElementById("reader-root").style.display="block";
+  try{
+    reader.doc = await pdfjsLib.getDocument({url:objectUrl}).promise;
+    rec.numPages = reader.doc.numPages; rec.updatedAt = Date.now();
+    save();
+  }catch(err){
+    toast("Couldn't open this PDF"); closeReader(); return;
+  }
+  await renderThumbs(rec);
+  await renderSpread();
+  bindReaderEvents(rec);
+}
+function openMissingPdfModal(rec){
+  openModal(`
+    <div class="modal-head"><h3>Not stored on this device</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <p style="font-size:0.88rem; color:var(--text-soft); line-height:1.5; margin-bottom:20px;">${escapeHtml(rec.filename)} was uploaded on another device, so it isn't saved here yet. If you have the file, you can add it to this device.</p>
+    <div class="modal-actions"><button class="btn secondary" id="attach-pdf-btn">Add PDF to this device</button></div>
+  `);
+  document.getElementById("attach-pdf-btn").addEventListener("click", ()=> attachPdfToDevice(rec.id));
+}
+function attachPdfToDevice(pdfId){
+  const input=document.createElement("input");
+  input.type="file"; input.accept="application/pdf";
+  input.onchange = async ()=>{
+    const file=input.files[0]; if(!file) return;
+    try{
+      await savePdfBlob(pdfId, file, file.name);
+      localPdfIds.add(pdfId);
+      closeModal();
+      toast("Added to this device");
+      renderView();
+    }catch(err){ toast("Not enough local storage available for this PDF."); }
+  };
+  input.click();
+}
+function closeReader(){
+  document.getElementById("reader-root").innerHTML="";
+  document.getElementById("reader-root").style.display="none";
+  if(reader && reader.objectUrl){ URL.revokeObjectURL(reader.objectUrl); reader.objectUrl=null; }
+  document.removeEventListener("keydown", readerKeyHandler);
+}
+function readerShellHtml(rec){
+  return `
+  <div id="reader-view">
+    <div class="reader-toolbar" role="toolbar" aria-label="Book reader controls">
+      <button data-r="close" title="Close" aria-label="Close reader">${icon('close')}</button>
+      <span class="title">${escapeHtml(rec.filename)}</span>
+      <button data-r="prev" title="Previous page" aria-label="Previous page">${icon('chevL')}</button>
+      <span class="pageno" id="reader-pageno" aria-live="polite">–</span>
+      <button data-r="next" title="Next page" aria-label="Next page">${icon('chevR')}</button>
+      <div class="grow"></div>
+      <button data-r="bookmark" title="Bookmark this page" aria-label="Bookmark this page">${icon('bookmark')}</button>
+      <button data-r="zoomout" title="Zoom out" aria-label="Zoom out">${icon('zoomOut')}</button>
+      <button data-r="zoomin" title="Zoom in" aria-label="Zoom in">${icon('zoomIn')}</button>
+      <button data-r="fullscreen" title="Fullscreen" aria-label="Toggle fullscreen">${icon('fullscreen')}</button>
+    </div>
+    <div class="book-stage" id="book-stage"></div>
+    <div class="thumb-strip" id="thumb-strip"></div>
+  </div>`;
+}
+async function renderThumbs(rec){
+  const strip=document.getElementById("thumb-strip");
+  if(!strip) return;
+  strip.innerHTML="";
+  const n=reader.doc.numPages;
+  for(let i=1;i<=n;i++){
+    const ph=document.createElement("div");
+    ph.className="thumb-ph"; ph.dataset.page=i;
+    ph.style.background="var(--bg-sunken)";
+    ph.addEventListener("click",()=>{ reader.spread = reader.isMobile? i-1 : spreadForPage(i); renderSpread(); });
+    strip.appendChild(ph);
+  }
+}
+function spreadForPage(p){ return p<=1?0:Math.ceil((p-1)/2); }
+function pagesForSpread(idx){
+  if(reader.isMobile) return [idx+1];
+  if(idx===0) return [1];
+  const left=idx*2, right=left+1;
+  return [left, right].filter(p=>p>=1 && p<=reader.doc.numPages);
+}
+async function renderPageToCanvas(pageNum, canvas){
+  const page = await reader.doc.getPage(pageNum);
+  const viewport = page.getViewport({scale: 1.35 * reader.scale});
+  canvas.width = viewport.width; canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d");
+  await page.render({canvasContext:ctx, viewport}).promise;
+}
+async function renderSpread(dir){
+  const stage=document.getElementById("book-stage");
+  if(!stage || !reader.doc) return;
+  reader.isMobile = isMobileView();
+  const pages = pagesForSpread(reader.spread);
+  const wrap=document.createElement("div");
+  wrap.className="book-spread" + (dir==="next"?" turning-next":dir==="prev"?" turning-prev":"");
+  if(pages.length===1){
+    const pageDiv=document.createElement("div"); pageDiv.className="book-page single";
+    const c=document.createElement("canvas"); pageDiv.appendChild(c); wrap.appendChild(pageDiv);
+    await renderPageToCanvas(pages[0], c);
+  } else {
+    const l=document.createElement("div"); l.className="book-page left";
+    const cl=document.createElement("canvas"); l.appendChild(cl);
+    const spine=document.createElement("div"); spine.className="book-spine";
+    const r=document.createElement("div"); r.className="book-page right";
+    const cr=document.createElement("canvas"); r.appendChild(cr);
+    wrap.appendChild(l); wrap.appendChild(spine); wrap.appendChild(r);
+    await renderPageToCanvas(pages[0], cl);
+    if(pages[1]) await renderPageToCanvas(pages[1], cr);
+  }
+  const tapL=document.createElement("div"); tapL.className="reader-tap-l"; tapL.addEventListener("click",()=>turn("prev"));
+  const tapR=document.createElement("div"); tapR.className="reader-tap-r"; tapR.addEventListener("click",()=>turn("next"));
+  wrap.appendChild(tapL); wrap.appendChild(tapR);
+  stage.innerHTML=""; stage.appendChild(wrap);
+  requestAnimationFrame(()=>wrap.classList.remove("turning-next","turning-prev"));
+
+  const label = pages.length===1? `Page ${pages[0]} of ${reader.doc.numPages}` : `Pages ${pages[0]}–${pages[1]||pages[0]} of ${reader.doc.numPages}`;
+  const pn=document.getElementById("reader-pageno"); if(pn) pn.textContent=label;
+  document.querySelectorAll(".thumb-ph").forEach(el=>el.classList.toggle("active", pages.includes(parseInt(el.dataset.page))));
+  const activeThumb = document.querySelector(".thumb-ph.active");
+  if(activeThumb) activeThumb.scrollIntoView({inline:"center", block:"nearest"});
+}
+function maxSpread(){
+  if(!reader.doc) return 0;
+  return reader.isMobile ? reader.doc.numPages-1 : spreadForPage(reader.doc.numPages);
+}
+function turn(dir){
+  if(!reader.doc) return;
+  if(dir==="next" && reader.spread < maxSpread()){ reader.spread++; renderSpread("next"); }
+  else if(dir==="prev" && reader.spread>0){ reader.spread--; renderSpread("prev"); }
+}
+function readerKeyHandler(e){
+  if(e.key==="ArrowLeft") turn("prev");
+  if(e.key==="ArrowRight") turn("next");
+  if(e.key==="Escape") closeReader();
+}
+function bindReaderEvents(rec){
+  document.addEventListener("keydown", readerKeyHandler);
+  const root=document.getElementById("reader-root");
+  root.querySelector('[data-r="close"]').addEventListener("click", closeReader);
+  root.querySelector('[data-r="prev"]').addEventListener("click", ()=>turn("prev"));
+  root.querySelector('[data-r="next"]').addEventListener("click", ()=>turn("next"));
+  root.querySelector('[data-r="zoomin"]').addEventListener("click", ()=>{ reader.scale=Math.min(2.2, reader.scale+0.15); renderSpread(); });
+  root.querySelector('[data-r="zoomout"]').addEventListener("click", ()=>{ reader.scale=Math.max(0.6, reader.scale-0.15); renderSpread(); });
+  root.querySelector('[data-r="fullscreen"]').addEventListener("click", ()=>{
+    const el=document.getElementById("reader-view");
+    if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
+  });
+  root.querySelector('[data-r="bookmark"]').addEventListener("click", ()=>{
+    const page = pagesForSpread(reader.spread)[0];
+    const rec2 = state.pdfs.find(p=>p.id===reader.pdfId);
+    rec2.bookmarks = rec2.bookmarks||[];
+    rec2.bookmarks.push({page, createdAt:Date.now()});
+    state.bookmarksList.push({id:uid(), type:"pdf", refId:rec2.id, label:`${rec2.filename} · p.${page}`, page, createdAt:Date.now()});
+    save(); toast("Page bookmarked");
+  });
+  window.addEventListener("resize", onReaderResize);
+}
+function onReaderResize(){
+  if(!reader.doc) return;
+  const wasMobile=reader.isMobile;
+  reader.isMobile=isMobileView();
+  if(wasMobile!==reader.isMobile){
+    const curPage = pagesForSpread(reader.spread)[0];
+    reader.spread = reader.isMobile ? curPage-1 : spreadForPage(curPage);
+  }
+  renderSpread();
+}
+
+/* ============================================================
+   GLOBAL SEARCH
+   ============================================================ */
+document.getElementById("open-search").addEventListener("click", ()=>{
+  openModal(`
+    <div class="modal-head"><h3>Search</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <input id="global-search-input" placeholder="Search subjects, notes, PDFs, assignments…" style="width:100%; padding:11px 14px; border-radius:var(--radius-s); border:1px solid var(--border); background:var(--bg); font-size:0.9rem; margin-bottom:14px;">
+    <div id="search-results" style="max-height:50vh; overflow-y:auto;"></div>
+  `, true);
+  const input=document.getElementById("global-search-input");
+  input.focus();
+  input.addEventListener("input", ()=>runSearch(input.value));
+});
+function runSearch(q){
+  const box=document.getElementById("search-results");
+  q=q.trim().toLowerCase();
+  if(!q){ box.innerHTML=""; return; }
+  const results=[];
+  state.subjects.filter(inActiveSem).forEach(s=>{ if((s.name+" "+(s.code||"")).toLowerCase().includes(q)) results.push({label:s.name, sub:"Subject", act:()=>{closeModal(); navigate("subject-detail",{id:s.id}); renderSubjectDetail(s.id);}}); });
+  state.notes.forEach(n=>{ if((n.title+" "+(n.content||"")).toLowerCase().includes(q)) results.push({label:n.title, sub:"Note", act:()=>{closeModal(); openNoteModal(n);}}); });
+  state.pdfs.forEach(p=>{ if(p.filename.toLowerCase().includes(q)) results.push({label:p.filename, sub:"PDF", act:()=>{closeModal(); openReader(p.id);}}); });
+  state.assignments.forEach(a=>{ if(a.name.toLowerCase().includes(q)) results.push({label:a.name, sub:"Assignment", act:()=>{closeModal(); navigate("assignments"); openModal(assignmentFormHtml(a)); document.getElementById("assignment-form").dataset.editId=a.id;}}); });
+  state.revisionTopics.forEach(t=>{ if(t.chapter.toLowerCase().includes(q)) results.push({label:t.chapter, sub:"Revision topic", act:()=>{closeModal(); navigate("revision");}}); });
+  box.innerHTML = results.length? results.slice(0,20).map((r,i)=>`<div class="topic-row" data-res="${i}" style="cursor:pointer;"><span>${escapeHtml(r.label)}</span><span class="badge todo">${r.sub}</span></div>`).join("") : `<div class="empty" style="padding:16px;">No results.</div>`;
+  results.slice(0,20).forEach((r,i)=>{ box.querySelector(`[data-res="${i}"]`).addEventListener("click", r.act); });
+}
+
+/* ============================================================
+   THEME TOGGLE (quick button cycles light/dark)
+   ============================================================ */
+document.getElementById("theme-toggle").addEventListener("click", ()=>{
+  const cur=state.settings.theme;
+  state.settings.theme = cur==="dark" ? "light" : cur==="light" ? "system" : "dark";
+  applyTheme(); save();
+  toast(`Theme: ${state.settings.theme}`);
+});
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function renderView(){
+  renderNav();
+  if(currentView==="dashboard") renderDashboard();
+  else if(currentView==="subjects") renderSubjects();
+  else if(currentView==="subject-detail") renderSubjectDetail(currentParams.id);
+  else if(currentView==="notes") renderNotes();
+  else if(currentView==="planner") renderPlanner();
+  else if(currentView==="assignments") renderAssignments();
+  else if(currentView==="revision") renderRevision();
+  else if(currentView==="progress") renderProgress();
+  else if(currentView==="timetable") renderTimetable();
+  else if(currentView==="settings") renderSettings();
+  else renderDashboard();
+}
+
+/* ---------- init ---------- */
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
+renderView();
+refreshLocalPdfIds().then(migrateLegacyPdfBlobs).then(renderView).catch(()=>{});
+
+})();
+
+</script>
 </body>
 </html>
