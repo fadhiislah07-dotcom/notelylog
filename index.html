@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+
 /* ============ TOKENS ============ */
 :root{
   --sage:#A8BFA3;
@@ -414,6 +415,27 @@ button:focus-visible, .subject-card:focus-visible, .note-card:focus-visible, .pd
   .hero-greet .hero-deco{width:100px; height:100px; top:-14px; right:-14px;}
 }
 
+
+/* ============ FEATURE 1 — TODAY / FOCUS MODE ============ */
+.today-page{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.today-page > div:last-child{grid-column:1 / -1;}
+@media (max-width:900px){ .today-page{grid-template-columns:1fr;} }
+.today-empty{color:var(--text-faint); font-size:0.88rem; padding:10px 0;}
+.today-dot{width:6px; height:6px; border-radius:50%; background:var(--accent-soft); flex-shrink:0;}
+
+#focus-view{position:fixed; inset:0; z-index:600; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; animation:modalIn .25s var(--ease);}
+.focus-inner{text-align:center; max-width:480px;}
+.focus-subject{display:inline-flex; align-items:center; gap:7px; font-size:0.85rem; font-weight:600; color:var(--text-soft); background:var(--bg-sunken); padding:6px 14px; border-radius:999px; margin-bottom:18px;}
+.focus-task{font-size:clamp(1.6rem, 1.2rem + 2vw, 2.4rem); margin-bottom:28px;}
+.focus-clock{font-family:var(--font-display); font-size:clamp(3rem, 2rem + 6vw, 5.5rem); font-variant-numeric:tabular-nums; color:var(--accent); margin-bottom:34px;}
+.focus-actions{display:flex; gap:12px; justify-content:center;}
+
+.continue-toast{position:absolute; bottom:86px; left:50%; transform:translateX(-50%) translateY(8px); display:flex; align-items:center; gap:14px; background:rgba(18,22,15,0.92); color:#E7EDE3; padding:10px 16px; border-radius:999px; font-size:0.82rem; opacity:0; transition:opacity .25s var(--ease), transform .25s var(--ease); z-index:20;}
+.continue-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.continue-toast button{background:rgba(255,255,255,0.14); border:none; color:#fff; padding:5px 11px; border-radius:999px; font-size:0.78rem; font-weight:600;}
+.continue-toast button:hover{background:rgba(255,255,255,0.24);}
+@media (max-width:760px){ .continue-toast{bottom:76px; flex-direction:column; gap:6px; text-align:center;} }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
@@ -468,6 +490,7 @@ const FIREBASE_CONFIG = {
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
+
 /* ============================================================
    NOTELYLOG — app.js
    Single-page study dashboard: state, rendering, PDF book reader.
@@ -510,11 +533,11 @@ function todayStr(){ return new Date().toISOString().slice(0,10); }
 function defaultState(){
   const semId = uid();
   return {
-    settings:{ theme:"system", reminderDays:3 },
+    settings:{ theme:"system", reminderDays:3, lastBackupAt:null, lastSuccessfulSyncAt:null },
     activeSemesterId: semId,
-    semesters:[{id:semId, name:"Semester 1", totalWeeks:17, currentWeek:1, archived:false, createdAt:Date.now()}],
+    semesters:[{id:semId, name:"Semester 1", totalWeeks:17, currentWeek:1, startDate:null, archived:false, createdAt:Date.now()}],
     subjects:[], notes:[], pdfs:[], assignments:[], revisionTopics:[],
-    timetable:[], goals:[], quickNotes:[], bookmarksList:[], trash:[],
+    timetable:[], goals:[], quickNotes:[], bookmarksList:[], trash:[], importantDates:[],
     tombstones:{},
     stats:{ streak:0, lastActiveDate:null }
   };
@@ -539,6 +562,7 @@ try{
 let fbAuth=null, fbDb=null, fbUser=null, cloudSaveTimer=null, cloudSynced=false, initialSyncDone=false;
 
 let saveTimer=null;
+let lastLocalSaveOk = true;
 function save(){
   let localOk = true;
   try{
@@ -548,6 +572,7 @@ function save(){
     console.error("Local save failed:", e);
     toast("Couldn't save — storage may be full");
   }
+  lastLocalSaveOk = localOk;
   if(localOk){
     const ind=document.getElementById("save-indicator");
     if(ind){
@@ -574,6 +599,49 @@ touchStreak();
 
 function activeSemester(){ return state.semesters.find(s=>s.id===state.activeSemesterId) || state.semesters[0]; }
 function inActiveSem(x){ return x.semesterId===state.activeSemesterId; }
+
+/* ---------- semester week calculation (Feature 2) ----------
+   Uses the LOCAL calendar date throughout — never UTC — so the week
+   doesn't shift near midnight for people west/east of UTC. Semesters
+   without a startDate (all pre-existing semesters) fall back to the
+   original manually-set currentWeek field, so nothing breaks for
+   existing users until they opt into a start date. */
+function localMidnight(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function parseLocalDate(dateStr){
+  if(!dateStr) return null;
+  const [y,m,d] = dateStr.split("-").map(Number);
+  if(!y||!m||!d) return null;
+  return new Date(y, m-1, d);
+}
+function computeSemesterWeek(sem){
+  if(!sem) return {mode:"manual", week:1, totalWeeks:17};
+  if(!sem.startDate){
+    return {mode:"manual", week:sem.currentWeek||1, totalWeeks:sem.totalWeeks||17};
+  }
+  const start = parseLocalDate(sem.startDate);
+  if(!start) return {mode:"manual", week:sem.currentWeek||1, totalWeeks:sem.totalWeeks||17};
+  const today = localMidnight(new Date());
+  const diffDays = Math.round((today - localMidnight(start)) / 86400000);
+  const totalWeeks = sem.totalWeeks || 17;
+  if(diffDays < 0){
+    return {mode:"before", daysUntilStart: -diffDays, totalWeeks};
+  }
+  const week = Math.floor(diffDays/7) + 1;
+  if(week > totalWeeks){
+    return {mode:"after", totalWeeks};
+  }
+  const totalDays = totalWeeks*7;
+  const progressPct = Math.min(100, Math.round(((diffDays+1)/totalDays)*100));
+  const daysRemaining = Math.max(0, totalDays - (diffDays+1));
+  return {mode:"during", week, totalWeeks, progressPct, daysRemaining};
+}
+function semesterWeekLabel(sem){
+  const c = computeSemesterWeek(sem);
+  if(c.mode==="before") return `Semester starts in ${c.daysUntilStart} day${c.daysUntilStart===1?"":"s"}`;
+  if(c.mode==="after") return "Semester completed";
+  if(c.mode==="during") return `Week ${c.week} of ${c.totalWeeks}`;
+  return `Week ${c.week} of ${c.totalWeeks}`; // manual fallback
+}
 
 /* ---------- theme ---------- */
 function applyTheme(){
@@ -734,6 +802,7 @@ function mergeCloudState(localState, cloudStateRaw){
   merged.quickNotes = mergeArrayById(localState.quickNotes, cloudState.quickNotes, tombstones);
   merged.bookmarksList = mergeArrayById(localState.bookmarksList, cloudState.bookmarksList, tombstones);
   merged.pdfs = mergeArrayById(localState.pdfs, cloudState.pdfs, tombstones);
+  merged.importantDates = mergeArrayById(localState.importantDates, cloudState.importantDates, tombstones);
   merged.semesters = mergeArrayById(localState.semesters, cloudState.semesters, null);
   merged.trash = mergeArrayById(localState.trash, cloudState.trash, tombstones);
   merged.tombstones = tombstones;
@@ -771,11 +840,15 @@ async function handleAuthChange(user){
       cloudSynced = true;
       toast("Signed in — your data is now backed up to this account");
     }
+    state.settings.lastSuccessfulSyncAt = Date.now();
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+    setSyncStatus("synced");
     initialSyncDone = true;
     queueCloudSave(); // push the merged/initial snapshot back up so both sides agree right away
   }catch(err){
     console.error("Cloud sync error:", err);
     toast("Signed in, but couldn't reach cloud sync — working offline");
+    setSyncStatus(navigator.onLine===false ? "offline" : "error");
   }
 }
 function mergeWithDefaults(cloudState){
@@ -784,12 +857,28 @@ function mergeWithDefaults(cloudState){
   for(const k in d){ if(!(k in merged)) merged[k]=d[k]; }
   return merged;
 }
+/* ---- Feature 6: live sync status, for Settings → Data Safety ----
+   Purely a UI signal — never affects whether a save actually happens.
+   States: idle | pending | syncing | synced | offline | error */
+let syncStatus = "idle";
+function setSyncStatus(s){ syncStatus = s; refreshDataSafetySection(); }
+window.addEventListener("online", ()=>{ if(fbUser) queueCloudSave(); });
+window.addEventListener("offline", ()=>{ if(fbUser) setSyncStatus("offline"); });
+
 function queueCloudSave(){
   if(!fbUser || !fbDb || !initialSyncDone) return; // never push before this device has pulled at least once this session
+  setSyncStatus(navigator.onLine===false ? "offline" : "pending");
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>{
+    if(navigator.onLine===false){ setSyncStatus("offline"); return; }
+    setSyncStatus("syncing");
     cloudDocRef(fbUser.uid).set({state:sanitizeForCloud(state), updatedAt:Date.now()})
-      .catch((err)=>{ console.error("Cloud save failed:", err); toast("Sync failed — check your connection"); });
+      .then(()=>{
+        state.settings.lastSuccessfulSyncAt = Date.now();
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+        setSyncStatus("synced");
+      })
+      .catch((err)=>{ console.error("Cloud save failed:", err); toast("Sync failed — check your connection"); setSyncStatus("error"); });
   }, 900);
 }
 function signInWithGoogle(){
@@ -981,6 +1070,10 @@ const ICONS = {
   revision:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
   progress:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>',
   timetable:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>',
+  today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  dates:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/><path d="M12 14l1.2 2.4 2.6.4-1.9 1.9.4 2.6-2.3-1.2-2.3 1.2.4-2.6-1.9-1.9 2.6-.4z"/></svg>',
+  timer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg>',
+  focus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M22 12h-4M6 12H2"/></svg>',
   settings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg>',
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
   edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
@@ -1009,11 +1102,13 @@ function icon(name){ return ICONS[name]||""; }
 /* ---------- nav ---------- */
 const NAV_ITEMS = [
   {id:"dashboard", label:"Dashboard"},
+  {id:"today", label:"Today"},
   {id:"subjects", label:"Subjects"},
   {id:"planner", label:"Study Planner"},
   {id:"notes", label:"Notes"},
   {id:"assignments", label:"Assignments"},
   {id:"revision", label:"Revision"},
+  {id:"dates", label:"Important Dates"},
   {id:"progress", label:"Semester Progress"},
   {id:"timetable", label:"Timetable"},
   {id:"settings", label:"Settings"}
@@ -1030,7 +1125,7 @@ function renderNav(){
   const mobileMain = NAV_ITEMS.slice(0,4);
   document.getElementById("bottom-nav").innerHTML = mobileMain.map(n=>`
     <button class="bn-item ${currentView===n.id?'active':''}" data-nav="${n.id}">${icon(n.id)}<span>${n.label.split(' ')[0]}</span></button>
-  `).join("") + `<button class="bn-item more ${['assignments','revision','progress','timetable','settings'].includes(currentView)?'active':''}" data-nav="settings">${icon('more')}<span>More</span></button>`;
+  `).join("") + `<button class="bn-item more ${['assignments','revision','dates','progress','timetable','settings'].includes(currentView)?'active':''}" data-nav="settings">${icon('more')}<span>More</span></button>`;
   renderAccountWidget();
 }
 
@@ -1061,6 +1156,22 @@ function dueLabel(d){
   if(n===1) return "Due tomorrow";
   if(n<=7) return `Due in ${n} days`;
   return `Due ${fmtDate(d)}`;
+}
+/* Feature 5 — Important Dates relative-day phrasing (deliberately shorter
+   than dueLabel's "Due in N days" — matches the spec's own examples). */
+function eventDayLabel(d){
+  const n=daysUntil(d); if(n===null) return "";
+  if(n<0) return fmtDate(d);
+  if(n===0) return "Today";
+  if(n===1) return "Tomorrow";
+  return `${n} days`;
+}
+const EVENT_TYPES = ["Quiz","Test","Midterm","Final Exam","Presentation","Lab","Practical","Assignment","Other"];
+function upcomingImportantDates(limit){
+  return state.importantDates.filter(inActiveSem)
+    .filter(e=> (daysUntil(e.date)||0) >= 0)
+    .sort((a,b)=> a.date.localeCompare(b.date) || (a.time||"").localeCompare(b.time||""))
+    .slice(0, limit||Infinity);
 }
 function urgencyClass(d,status){
   if(status==="completed"||status==="Completed"||status==="done") return "done";
@@ -1116,8 +1227,8 @@ function renderDashboard(){
   const dowMap=[6,0,1,2,3,4,5]; // convert JS sun=0 to Mon-first idx
   const todayClasses = state.timetable.filter(inActiveSem).filter(t=>t.day===dowMap[todayDow]).sort((a,b)=>a.start.localeCompare(b.start));
   const todayTasks = []; // planner tasks due today handled below if any exist
-
-  const pct = sem.totalWeeks ? Math.min(100, Math.round((sem.currentWeek/sem.totalWeeks)*100)) : 0;
+  const weekCalc = computeSemesterWeek(sem);
+  const upcomingEvents = upcomingImportantDates(3);
 
   document.getElementById("view").innerHTML = `
     <div class="hero-greet">
@@ -1135,7 +1246,7 @@ function renderDashboard(){
       <div class="hero-streak">${icon('flame')}<span>${state.stats.streak} day streak</span></div>
     </div>
 
-    <div class="grid cols-2" style="margin-bottom:16px;">
+    <div class="grid cols-3" style="margin-bottom:16px;">
       <div class="card">
         <div class="section-title"><h3>Today</h3></div>
         ${todayClasses.length ? `<div class="today-list">${todayClasses.map(c=>{
@@ -1155,6 +1266,13 @@ function renderDashboard(){
           </div>`;
         }).join("") : `<div class="empty" style="padding:18px;">No assignments yet.</div>`}
       </div>
+      <div class="card">
+        <div class="section-title"><h3>Upcoming</h3><button class="link" data-nav="dates">View all</button></div>
+        ${upcomingEvents.length ? `<div class="today-list">${upcomingEvents.map(ev=>{
+          const s=subjectById(ev.subjectId);
+          return `<div class="today-item"><span class="txt" style="flex:1;">${escapeHtml(ev.type)}${s?' · '+escapeHtml(s.name):''}<br><span style="color:var(--text-faint); font-size:0.78rem;">${escapeHtml(ev.title)}</span></span><span class="time" style="width:auto;">${eventDayLabel(ev.date)}</span></div>`;
+        }).join("")}</div>` : `<div class="empty" style="padding:18px;">No important dates yet.</div>`}
+      </div>
     </div>
 
     <div class="section-title"><h3>My Subjects</h3><button class="link" data-nav="subjects">View All Subjects</button></div>
@@ -1164,8 +1282,8 @@ function renderDashboard(){
     <div class="grid cols-2">
       <div class="card">
         <div class="section-title"><h3>Semester Progress</h3></div>
-        <p style="font-size:0.9rem; color:var(--text-soft); margin-bottom:8px;">${escapeHtml(sem.name)} · Week ${sem.currentWeek} / ${sem.totalWeeks}</p>
-        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <p style="font-size:0.9rem; color:var(--text-soft); margin-bottom:8px;">${escapeHtml(sem.name)} · ${semesterWeekLabel(sem)}</p>
+        ${weekCalc.mode==="during"||weekCalc.mode==="manual" ? `<div class="progress-track"><div class="progress-fill" style="width:${weekCalc.mode==='during'?weekCalc.progressPct:Math.min(100,Math.round((sem.currentWeek/(sem.totalWeeks||17))*100))}%"></div></div>` : ''}
       </div>
       <div class="card">
         <div class="section-title"><h3>Semester Goals</h3><button class="link" data-action="add-goal">${icon('plus')} Add</button></div>
@@ -1181,21 +1299,172 @@ function renderDashboard(){
   `;
 }
 function greetPart(){ const h=new Date().getHours(); return h<12?"morning":h<18?"afternoon":"evening"; }
+
+/* ============================================================
+   FEATURE 1 — TODAY / FOCUS MODE
+   Read-only view over existing data (timetable, assignments, important
+   dates, goals, revision topics, quick notes). Nothing new is stored
+   except when you tick a goal / edit a quick note, which reuse the
+   existing handlers.
+   ============================================================ */
+function fmtTime12(t){
+  if(!t) return "";
+  const [h,m] = t.split(":").map(Number);
+  if(isNaN(h)) return t;
+  return `${((h+11)%12)+1}:${String(m||0).padStart(2,"0")} ${h<12?"AM":"PM"}`;
+}
+function renderToday(){
+  const sem = activeSemester();
+  const dow = [6,0,1,2,3,4,5][new Date().getDay()];
+  const classes = state.timetable.filter(inActiveSem).filter(t=>t.day===dow).sort((a,b)=>a.start.localeCompare(b.start));
+  const dueSoon = state.assignments.filter(inActiveSem)
+    .filter(a=>a.status!=="completed" && a.dueDate && daysUntil(a.dueDate)<=7)
+    .sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).slice(0,4);
+  const events = upcomingImportantDates(4);
+  const goals = state.goals.filter(inActiveSem).filter(g=>!g.done).slice(0,4);
+  const needRevision = state.revisionTopics.filter(inActiveSem).filter(t=>t.status==="need-revision").slice(0,3);
+  const stickies = state.quickNotes.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0) || b.createdAt-a.createdAt).slice(0,3);
+
+  document.getElementById("view").innerHTML = `
+    <div class="page-head">
+      <div><h1>Good ${greetPart()}</h1><p class="sub">${todayLong()} · ${semesterWeekLabel(sem)}</p></div>
+      <button class="btn" data-action="start-focus">${icon('focus')}Start Focus</button>
+    </div>
+    <div class="today-page">
+      <div class="card">
+        <div class="section-title"><h3>Today's Classes</h3></div>
+        ${classes.length ? `<div class="today-list">${classes.map(c=>{
+          const s=subjectById(c.subjectId);
+          return `<div class="today-item"><span class="time" style="width:78px;">${fmtTime12(c.start)}</span><span class="txt">${escapeHtml(s?s.name:'Class')}${c.location?' · '+escapeHtml(c.location):''}</span></div>`;
+        }).join("")}</div>` : `<p class="today-empty">No classes today.</p>`}
+      </div>
+      ${dueSoon.length ? `<div class="card">
+        <div class="section-title"><h3>Due Soon</h3><button class="link" data-nav="assignments">View all</button></div>
+        ${dueSoon.map(assignRowHtml).join("")}
+      </div>` : ''}
+      ${events.length ? `<div class="card">
+        <div class="section-title"><h3>Upcoming</h3><button class="link" data-nav="dates">View all</button></div>
+        <div class="today-list">${events.map(ev=>{
+          const s=subjectById(ev.subjectId);
+          return `<div class="today-item"><span class="txt" style="flex:1;">${escapeHtml(ev.title)}<br><span style="color:var(--text-faint); font-size:0.78rem;">${escapeHtml(ev.type)}${s?' · '+escapeHtml(s.name):''}${ev.time?' · '+fmtTime12(ev.time):''}</span></span><span class="badge ${eventDayLabel(ev.date)==='Today'?'urgent':'todo'}">${eventDayLabel(ev.date)}</span></div>`;
+        }).join("")}</div>
+      </div>` : ''}
+      ${(goals.length||needRevision.length) ? `<div class="card">
+        <div class="section-title"><h3>Study Plan</h3></div>
+        ${goals.map(goalRowHtml).join("")}
+        ${needRevision.map(t=>{ const s=subjectById(t.subjectId); return `<div class="goal-row"><span class="today-dot"></span><span class="txt" style="flex:1; font-size:0.88rem;">Revise ${escapeHtml(t.chapter)}${s?` <span style="color:var(--text-faint);">· ${escapeHtml(s.name)}</span>`:''}</span></div>`; }).join("")}
+      </div>` : ''}
+      <div>
+        <div class="section-title"><h3>Quick Notes</h3></div>
+        <div class="corkboard">
+          ${stickies.map(stickyHtml).join("")}
+          <button class="add-sticky" data-action="add-sticky">${icon('plus')} New note</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---- Focus mode: a calm full-screen study screen with an optional timer.
+   Nothing here is saved — it's just a distraction-free view. ---- */
+let focusTimer = null;
+function openFocusSetup(){
+  openModal(`
+    <div class="modal-head"><h3>Start Focus</h3><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('close')}</button></div>
+    <form id="focus-form">
+      <div class="field"><label>Subject (optional)</label><select name="subjectId"><option value="">— none —</option>${subjectOptions("")}</select></div>
+      <div class="field"><label>What are you working on?</label><input name="task" placeholder="Revise Chapter 2"></div>
+      <div class="field"><label>Duration in minutes (optional)</label><input type="number" min="1" max="600" name="minutes" placeholder="25"></div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">Begin</button></div>
+    </form>`);
+}
+function startFocus(opts){
+  exitFocus();
+  const s = opts.subjectId ? subjectById(opts.subjectId) : null;
+  const total = opts.minutes ? opts.minutes*60 : 0;
+  let elapsed = 0, paused = false;
+  const el = document.createElement("div");
+  el.id = "focus-view";
+  el.setAttribute("role","dialog"); el.setAttribute("aria-label","Focus mode");
+  el.innerHTML = `
+    <div class="focus-inner">
+      ${s?`<div class="focus-subject"><span class="swatch" style="background:${s.color}"></span>${escapeHtml(s.name)}</div>`:''}
+      <h1 class="focus-task">${escapeHtml(opts.task||"Focus time")}</h1>
+      <div class="focus-clock" id="focus-clock" aria-live="off">0:00</div>
+      <div class="focus-actions">
+        <button class="btn secondary" id="focus-pause">Pause</button>
+        <button class="btn" id="focus-exit">Exit focus</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  const clock = el.querySelector("#focus-clock");
+  const fmt = sec => `${Math.floor(sec/60)}:${String(sec%60).padStart(2,"0")}`;
+  const draw = ()=>{ clock.textContent = total ? fmt(Math.max(0,total-elapsed)) : fmt(elapsed); };
+  draw();
+  focusTimer = setInterval(()=>{
+    if(paused) return;
+    elapsed++;
+    draw();
+    if(total && elapsed>=total){ clearInterval(focusTimer); focusTimer=null; clock.textContent="Done"; toast("Focus session complete"); }
+  }, 1000);
+  el.querySelector("#focus-pause").addEventListener("click", e=>{ paused=!paused; e.target.textContent = paused?"Resume":"Pause"; });
+  el.querySelector("#focus-exit").addEventListener("click", exitFocus);
+  document.addEventListener("keydown", focusKeyHandler);
+}
+function focusKeyHandler(e){ if(e.key==="Escape") exitFocus(); }
+function exitFocus(){
+  if(focusTimer){ clearInterval(focusTimer); focusTimer=null; }
+  const el = document.getElementById("focus-view");
+  if(el) el.remove();
+  document.removeEventListener("keydown", focusKeyHandler);
+}
+document.addEventListener("click", e=>{
+  if(e.target.closest('[data-action="start-focus"]')) openFocusSetup();
+});
+document.addEventListener("submit", e=>{
+  if(e.target.id==="focus-form"){
+    e.preventDefault();
+    const f = new FormData(e.target);
+    closeModal();
+    startFocus({subjectId:f.get("subjectId")||"", task:(f.get("task")||"").trim(), minutes:parseInt(f.get("minutes"))||0});
+  }
+});
 function todayLong(){ return new Date().toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'}); }
-function subjectCardHtml(s){
-  const notesCount = state.notes.filter(n=>n.subjectId===s.id).length + state.pdfs.filter(p=>p.subjectId===s.id).length;
-  const assignCount = state.assignments.filter(a=>a.subjectId===s.id).length;
+/* Feature 4 — Subject Progress: summarizes only REAL trackable data
+   (assignment completion + revision mastery). Never invents a score —
+   if there's nothing trackable yet, overallPct stays null and callers
+   show the individual stats instead of a bar. */
+function subjectStats(s){
+  const notes = state.notes.filter(n=>n.subjectId===s.id);
+  const pdfs = state.pdfs.filter(p=>p.subjectId===s.id);
+  const assigns = state.assignments.filter(a=>a.subjectId===s.id);
+  const assignDone = assigns.filter(a=>a.status==="completed").length;
+  const assignPct = assigns.length ? Math.round(assignDone/assigns.length*100) : null;
   const topics = state.revisionTopics.filter(t=>t.subjectId===s.id);
-  const mastered = topics.filter(t=>t.status==="mastered").length;
-  const pct = topics.length? Math.round((mastered/topics.length)*100) : 0;
+  const revisionDone = topics.filter(t=>t.status==="mastered"||t.status==="studied").length;
+  const revisionPct = topics.length ? Math.round(revisionDone/topics.length*100) : null;
+  const parts = [assignPct, revisionPct].filter(p=>p!==null);
+  const overallPct = parts.length ? Math.round(parts.reduce((a,b)=>a+b,0)/parts.length) : null;
+  const upcoming = state.importantDates.filter(e=>e.subjectId===s.id)
+    .filter(e=>(daysUntil(e.date)||0)>=0).sort((a,b)=>a.date.localeCompare(b.date))[0] || null;
+  return {notesCount:notes.length, pdfCount:pdfs.length, assignTotal:assigns.length, assignDone, assignPct,
+    topicsTotal:topics.length, revisionPct, overallPct, upcoming};
+}
+function subjectCardHtml(s){
+  const st = subjectStats(s);
+  const metaLine = st.assignTotal
+    ? `${st.notesCount+st.pdfCount} Notes · ${st.assignDone}/${st.assignTotal} Assignments`
+    : `${st.notesCount+st.pdfCount} Notes · ${st.assignTotal} Assignments`;
   return `<div class="subject-card" data-open-subject="${s.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(s.name)}">
     ${s.pinned?`<span class="pin-flag">${icon('pin')}</span>`:''}
     <div class="bar" style="background:${s.color}"></div>
     <h4>${escapeHtml(s.name)}</h4>
     <div class="code">${escapeHtml(s.code||'')}</div>
-    <div class="meta"><span>${notesCount} Notes · ${assignCount} Assignments</span></div>
-    <div style="margin-top:8px;" class="progress-track"><div class="progress-fill" style="width:${pct}%; background:${s.color}"></div></div>
-    <div class="meta" style="margin-top:6px;"><span>${pct}% Complete</span></div>
+    <div class="meta"><span>${metaLine}</span></div>
+    ${st.overallPct!==null ? `
+      <div style="margin-top:8px;" class="progress-track"><div class="progress-fill" style="width:${st.overallPct}%; background:${s.color}"></div></div>
+      <div class="meta" style="margin-top:6px;"><span>${st.overallPct}% Complete</span></div>
+    ` : `<div class="meta" style="margin-top:6px;"><span>${st.topicsTotal?`${st.revisionPct}% revised`:'No progress tracked yet'}</span></div>`}
   </div>`;
 }
 function goalRowHtml(g){
@@ -1279,6 +1548,9 @@ function renderSubjectDetail(id){
   const notes = state.notes.filter(n=>n.subjectId===id);
   const pdfs = state.pdfs.filter(p=>p.subjectId===id);
   const assigns = state.assignments.filter(a=>a.subjectId===id);
+  const st = subjectStats(s);
+  const subjectUpcoming = state.importantDates.filter(e=>e.subjectId===id)
+    .filter(e=>(daysUntil(e.date)||0)>=0).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
 
   document.getElementById("view").innerHTML = `
     <button class="btn ghost" data-nav="subjects" style="margin-bottom:10px;">${icon('chevL')} Subjects</button>
@@ -1289,6 +1561,17 @@ function renderSubjectDetail(id){
       </div>
       <button class="btn secondary" data-action="edit-subject" data-id="${s.id}">${icon('edit')}Edit</button>
     </div>
+    <div class="grid cols-3" style="margin-bottom:20px;">
+      ${statCard("Assignments", st.assignTotal? `${st.assignDone} of ${st.assignTotal} done` : "None yet")}
+      ${statCard("Revision", st.topicsTotal? `${st.revisionPct}% mastered/studied` : "None yet")}
+      ${statCard("Resources", `${st.notesCount} notes · ${st.pdfCount} PDFs`)}
+    </div>
+    ${subjectUpcoming.length ? `
+      <div class="section-title"><h3>Upcoming</h3></div>
+      <div class="card" style="margin-bottom:20px;">${subjectUpcoming.map(ev=>`
+        <div class="topic-row"><span>${escapeHtml(ev.type)} — ${escapeHtml(ev.title)}</span><span class="badge ${eventDayLabel(ev.date)==='Today'?'urgent':'todo'}">${eventDayLabel(ev.date)}</span></div>
+      `).join("")}</div>
+    ` : ''}
     <div class="tabs">${tabs.map(t=>`<button class="tab ${subjectDetailTab===t[0]?'active':''}" data-subtab="${t[0]}">${t[1]}</button>`).join("")}</div>
     <div id="subtab-content"></div>
   `;
@@ -1356,10 +1639,13 @@ function pdfCardHtml(p){
   const sizeLabel = p.size ? ` · ${formatBytes(p.size)}` : "";
   const available = localPdfIds.has(p.id);
   const status = available ? "" : ` · <span style="color:var(--text-faint); font-style:italic;">Not stored on this device</span>`;
+  const hasProgress = available && p.lastPage && p.lastPage>1 && p.numPages;
   return `<div class="pdf-card hover-row" data-open-pdf="${p.id}" role="button" tabindex="0" aria-label="Open ${escapeHtml(p.filename)} in book reader">
     <div class="pdf-thumb">${icon('pdf')}</div>
     <div style="flex:1; min-width:0;"><h4 style="font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.filename)}</h4>
       <div class="meta-line">${p.numPages||'?'} pages${sizeLabel}${status}</div>
+      ${hasProgress ? `<div class="progress-track" style="margin-top:6px; height:4px;"><div class="progress-fill" style="width:${p.readingProgress||0}%"></div></div>
+        <div class="meta-line" style="margin-top:3px;">Page ${p.lastPage} of ${p.numPages} · ${p.readingProgress||0}% read</div>` : ''}
     </div>
     <div class="row-actions"><button class="icon-btn tiny" data-action="del-pdf" data-id="${p.id}" aria-label="Delete PDF">${icon('trash')}</button></div>
   </div>`;
@@ -1497,6 +1783,90 @@ function assignmentFormHtml(a){
 /* ============================================================
    VIEW: REVISION
    ============================================================ */
+/* ============================================================
+   FEATURE 5 — IMPORTANT DATES
+   ============================================================ */
+let datesSearch="", datesSubjectFilter="", datesTypeFilter="";
+function renderImportantDates(){
+  let list = state.importantDates.filter(inActiveSem);
+  if(datesSearch.trim()){
+    const q=datesSearch.trim().toLowerCase();
+    list = list.filter(e=> (e.title+" "+(e.notes||"")).toLowerCase().includes(q));
+  }
+  if(datesSubjectFilter) list = list.filter(e=>e.subjectId===datesSubjectFilter);
+  if(datesTypeFilter) list = list.filter(e=>e.type===datesTypeFilter);
+  const upcoming = list.filter(e=>(daysUntil(e.date)||0)>=0).sort((a,b)=>a.date.localeCompare(b.date));
+  const past = list.filter(e=>(daysUntil(e.date)||0)<0).sort((a,b)=>b.date.localeCompare(a.date));
+
+  document.getElementById("view").innerHTML = `
+    <div class="page-head"><div><h1>Important Dates</h1><p class="sub">Quizzes, exams and deadlines, all in one place.</p></div>
+      <button class="btn" data-action="add-date">${icon('plus')}Add Date</button>
+    </div>
+    <div class="field-row" style="margin-bottom:14px;">
+      <input id="dates-search" placeholder="Search important dates…" value="${escapeHtml(datesSearch)}" style="flex:2; padding:10px 12px; border-radius:var(--radius-s); border:1px solid var(--border); background:var(--bg-elevated);">
+      <select id="dates-subject-filter" style="flex:1; padding:10px 12px; border-radius:var(--radius-s); border:1px solid var(--border); background:var(--bg-elevated);">
+        <option value="">All subjects</option>${subjectOptions(datesSubjectFilter)}
+      </select>
+      <select id="dates-type-filter" style="flex:1; padding:10px 12px; border-radius:var(--radius-s); border:1px solid var(--border); background:var(--bg-elevated);">
+        <option value="">All types</option>${EVENT_TYPES.map(t=>`<option value="${t}" ${datesTypeFilter===t?'selected':''}>${t}</option>`).join("")}
+      </select>
+    </div>
+    <div class="section-title"><h3>Upcoming</h3></div>
+    ${upcoming.length? `<div class="card" style="margin-bottom:20px;">${upcoming.map(eventRowHtml).join("")}</div>` : `<div class="empty" style="margin-bottom:20px;">${icon('dates')}<span>No upcoming dates.</span></div>`}
+    ${past.length ? `<div class="section-title"><h3>Past</h3></div><div class="card">${past.slice(0,20).map(eventRowHtml).join("")}</div>` : ''}
+  `;
+  document.getElementById("dates-search").addEventListener("input", e=>{ datesSearch=e.target.value; renderImportantDates(); });
+  document.getElementById("dates-subject-filter").addEventListener("change", e=>{ datesSubjectFilter=e.target.value; renderImportantDates(); });
+  document.getElementById("dates-type-filter").addEventListener("change", e=>{ datesTypeFilter=e.target.value; renderImportantDates(); });
+}
+function eventRowHtml(ev){
+  const s = subjectById(ev.subjectId);
+  return `<div class="assign-row hover-row">
+    <div class="info" data-action="edit-date" data-id="${ev.id}" role="button" tabindex="0" aria-label="Edit ${escapeHtml(ev.title)}">
+      <h4>${escapeHtml(ev.title)}</h4>
+      <div class="meta-line">
+        <span class="badge ${eventDayLabel(ev.date)==='Today'?'urgent':'todo'}">${eventDayLabel(ev.date)}</span>
+        <span class="subject-chip">${escapeHtml(ev.type)}</span>
+        ${s?`<span class="subject-chip"><span class="swatch" style="background:${s.color}"></span>${escapeHtml(s.name)}</span>`:''}
+        ${ev.time?`<span style="color:var(--text-faint); font-size:0.78rem;">${fmtTime12(ev.time)}</span>`:''}
+      </div>
+    </div>
+    <div class="row-actions"><button class="icon-btn tiny" data-action="del-date" data-id="${ev.id}" aria-label="Delete ${escapeHtml(ev.title)}">${icon('trash')}</button></div>
+  </div>`;
+}
+function dateFormHtml(ev){
+  ev = ev || {title:'', subjectId:'', type:'Quiz', date:'', time:'', location:'', notes:'', reminderDays:''};
+  return `
+    <div class="modal-head"><h3>${ev.id?'Edit Important Date':'Add Important Date'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
+    <form id="date-form">
+      <div class="field"><label>Title</label><input required name="title" value="${escapeHtml(ev.title)}" placeholder="Food Chemistry Quiz"></div>
+      <div class="field-row">
+        <div class="field"><label>Subject</label><select name="subjectId"><option value="">— none —</option>${subjectOptions(ev.subjectId)}</select></div>
+        <div class="field"><label>Type</label><select name="type">${EVENT_TYPES.map(t=>`<option value="${t}" ${ev.type===t?'selected':''}>${t}</option>`).join("")}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Date</label><input required type="date" name="date" value="${ev.date||''}"></div>
+        <div class="field"><label>Time (optional)</label><input type="time" name="time" value="${ev.time||''}"></div>
+      </div>
+      <div class="field"><label>Location (optional)</label><input name="location" value="${escapeHtml(ev.location||'')}"></div>
+      <div class="field"><label>Notes (optional)</label><textarea name="notes" rows="3">${escapeHtml(ev.notes||'')}</textarea></div>
+      <div class="field"><label>Remind me (days before, optional)</label><input type="number" min="0" max="30" name="reminderDays" value="${ev.reminderDays||''}" placeholder="e.g. 2"></div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">${ev.id?'Save Changes':'Add Date'}</button></div>
+    </form>
+  `;
+}
+document.addEventListener("submit", e=>{
+  if(e.target.id==="date-form"){
+    e.preventDefault();
+    const f=new FormData(e.target);
+    const id=e.target.dataset.editId;
+    const payload={title:f.get("title"), subjectId:f.get("subjectId")||null, type:f.get("type"), date:f.get("date"), time:f.get("time")||"", location:f.get("location")||"", notes:f.get("notes")||"", reminderDays:f.get("reminderDays")?parseInt(f.get("reminderDays")):null};
+    if(id){ Object.assign(state.importantDates.find(x=>x.id===id), payload, {updatedAt:Date.now()}); }
+    else { state.importantDates.push({id:uid(), semesterId:state.activeSemesterId, createdAt:Date.now(), updatedAt:Date.now(), ...payload}); }
+    save(); closeModal(); renderView(); toast(id?"Date updated":"Date added");
+  }
+});
+
 function renderRevision(){
   const subs = state.subjects.filter(inActiveSem);
   document.getElementById("view").innerHTML = `
@@ -1541,10 +1911,14 @@ function renderProgress(){
   const mastered = topics.filter(t=>t.status==="mastered").length;
   const notesUploaded = state.notes.filter(inActiveSem).length + state.pdfs.filter(inActiveSem).length;
   const classesTotal = state.timetable.filter(inActiveSem).length;
-  const pct = sem.totalWeeks? Math.min(100,Math.round(sem.currentWeek/sem.totalWeeks*100)):0;
+  const weekCalc = computeSemesterWeek(sem);
+  const pct = weekCalc.mode==="during" ? weekCalc.progressPct
+    : weekCalc.mode==="after" ? 100
+    : weekCalc.mode==="before" ? 0
+    : (sem.totalWeeks? Math.min(100,Math.round(sem.currentWeek/sem.totalWeeks*100)):0);
 
   document.getElementById("view").innerHTML = `
-    <div class="page-head"><div><h1>Semester Progress</h1><p class="sub">${escapeHtml(sem.name)} — Week ${sem.currentWeek} of ${sem.totalWeeks}</p></div>
+    <div class="page-head"><div><h1>Semester Progress</h1><p class="sub">${escapeHtml(sem.name)} — ${semesterWeekLabel(sem)}${weekCalc.mode==="during"?` · ${weekCalc.daysRemaining} days remaining`:''}</p></div>
       <button class="btn secondary" data-action="edit-semester">${icon('edit')}Edit Semester</button>
     </div>
     <div class="card" style="margin-bottom:18px;">
@@ -1624,7 +1998,7 @@ function timetableRowHtml(e){
    ============================================================ */
 let settingsTab="appearance";
 function renderSettings(){
-  const tabs=[["appearance","Appearance"],["account","Account"],["semester","Semesters"],["reminders","Reminders"],["data","Data & Trash"],["about","About"]];
+  const tabs=[["appearance","Appearance"],["account","Account"],["safety","Data Safety"],["semester","Semesters"],["reminders","Reminders"],["data","Data & Trash"],["about","About"]];
   document.getElementById("view").innerHTML = `
     <div class="page-head"><h1>Settings</h1></div>
     <div class="tabs">${tabs.map(t=>`<button class="tab ${settingsTab===t[0]?'active':''}" data-settab="${t[0]}">${t[1]}</button>`).join("")}</div>
@@ -1672,6 +2046,12 @@ function renderSettings(){
       </div>`;
       document.getElementById("settings-signin").addEventListener("click", signInWithGoogle);
     }
+    return;
+  }
+  if(settingsTab==="safety"){
+    box.innerHTML = `<div class="card" id="data-safety-card" style="max-width:480px;">${dataSafetyHtml()}</div>`;
+    bindDataSafetySection();
+    renderLocalPdfStatsInto("safety-pdf-stats");
     return;
   }
   if(settingsTab==="semester"){
@@ -1746,8 +2126,65 @@ function trashLabel(t){
 /* ============================================================
    LOCAL PDF STORAGE INFO + BACKUP EXPORT/IMPORT
    ============================================================ */
-async function renderLocalPdfStats(){
-  const box = document.getElementById("local-pdf-stats");
+/* ============================================================
+   FEATURE 6 — DATA SAFETY (Settings → Data Safety)
+   Pure status display — reuses the existing backup/local-storage
+   machinery, never a second architecture of its own.
+   ============================================================ */
+function syncStatusRow(){
+  if(!FIREBASE_READY) return {label:"Not set up", badge:"todo", sub:"Data stays on this device only."};
+  if(!fbUser) return {label:"Not signed in", badge:"todo", sub:"Data stays on this device until you sign in."};
+  const map = {
+    idle:    {label:"Synced",   badge:"done",   sub:""},
+    pending: {label:"Changes pending", badge:"doing", sub:"Will sync shortly."},
+    syncing: {label:"Syncing…", badge:"doing",  sub:""},
+    synced:  {label:"Synced",   badge:"done",   sub:""},
+    offline: {label:"Offline",  badge:"urgent", sub:"Changes saved locally — will sync when back online."},
+    error:   {label:"Sync error", badge:"urgent", sub:"Local copy is still saved."}
+  };
+  return map[syncStatus] || map.idle;
+}
+function relativeTime(ts){
+  if(!ts) return null;
+  const d = new Date(ts);
+  const today = todayStr();
+  const dStr = d.toISOString().slice(0,10);
+  const time = d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  if(dStr===today) return time;
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'});
+}
+function dataSafetyHtml(){
+  const sync = syncStatusRow();
+  const lastSync = relativeTime(state.settings.lastSuccessfulSyncAt);
+  const lastBackup = state.settings.lastBackupAt;
+  const backupAge = lastBackup ? Math.floor((Date.now()-lastBackup)/86400000) : null;
+  return `
+    <div class="topic-row"><span>Cloud Sync</span><span class="badge ${sync.badge}">${sync.label}</span></div>
+    ${FIREBASE_READY && fbUser ? `<p style="font-size:0.78rem; color:var(--text-faint); margin:-6px 0 14px;">${sync.sub || (lastSync?`Last synced ${lastSync}`:'Not synced yet')}</p>` : `<p style="font-size:0.78rem; color:var(--text-faint); margin:-6px 0 14px;">${sync.sub}</p>`}
+    <div class="topic-row"><span>Local Data</span><span class="badge ${lastLocalSaveOk?'done':'urgent'}">${lastLocalSaveOk?'✓ Saved':'Save failed'}</span></div>
+    <p style="font-size:0.78rem; color:var(--text-faint); margin:-6px 0 14px;">Always kept in this browser, online or offline.</p>
+    <div class="topic-row"><span>PDFs on this device</span><span></span></div>
+    <div id="safety-pdf-stats" style="margin:-4px 0 14px;"><p style="font-size:0.85rem; color:var(--text-soft);">Checking…</p></div>
+    <div class="topic-row"><span>Last Backup</span><span class="badge todo">${lastBackup ? relativeTime(lastBackup) : 'None yet'}</span></div>
+    ${lastBackup && backupAge>=30 ? `<p style="font-size:0.78rem; color:var(--text-faint); margin:-6px 0 14px;">Consider creating a new backup.</p>` : `<div style="margin-bottom:14px;"></div>`}
+    <button class="btn secondary small" id="safety-backup-btn">${icon('download')}<span>Create Backup</span></button>
+  `;
+}
+function bindDataSafetySection(){
+  const btn = document.getElementById("safety-backup-btn");
+  if(btn) btn.addEventListener("click", exportLocalBackup);
+}
+function refreshDataSafetySection(){
+  const card = document.getElementById("data-safety-card");
+  if(!card) return;
+  card.innerHTML = dataSafetyHtml();
+  bindDataSafetySection();
+  renderLocalPdfStatsInto("safety-pdf-stats");
+}
+
+async function renderLocalPdfStats(){ return renderLocalPdfStatsInto("local-pdf-stats"); }
+async function renderLocalPdfStatsInto(targetId){
+  const box = document.getElementById(targetId);
   if(!box) return;
   try{
     const blobs = await getAllPdfBlobs();
@@ -1785,6 +2222,9 @@ async function exportLocalBackup(){
     a.download = `notelylog-backup-${new Date().toISOString().slice(0,10)}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    state.settings.lastBackupAt = Date.now();
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+    refreshDataSafetySection();
     toast("Backup downloaded");
   }catch(err){
     console.warn("Backup export failed:", err);
@@ -1889,7 +2329,7 @@ document.addEventListener("submit", e=>{
     e.preventDefault();
     const f=new FormData(e.target);
     const id=e.target.dataset.editId;
-    if(id){ const s=state.semesters.find(x=>x.id===id); s.name=f.get("name"); s.totalWeeks=parseInt(f.get("totalWeeks"))||17; s.currentWeek=parseInt(f.get("currentWeek"))||1; s.updatedAt=Date.now(); }
+    if(id){ const s=state.semesters.find(x=>x.id===id); s.name=f.get("name"); s.totalWeeks=parseInt(f.get("totalWeeks"))||17; s.currentWeek=parseInt(f.get("currentWeek"))||1; s.startDate=f.get("startDate")||null; s.updatedAt=Date.now(); }
     save(); closeModal(); renderView(); toast("Semester saved");
   }
 });
@@ -1924,6 +2364,10 @@ document.addEventListener("click", e=>{
   if(a==="add-topic"){ openModal(topicFormHtml(t.dataset.subject)); return; }
   if(a==="topic-status"){ /* handled by change listener */ return; }
   if(a==="del-topic"){ softDelete("revisionTopics", t.dataset.id, "topic"); renderView(); return; }
+
+  if(a==="add-date"){ openModal(dateFormHtml()); return; }
+  if(a==="edit-date"){ openModal(dateFormHtml(state.importantDates.find(x=>x.id===t.dataset.id))); document.getElementById("date-form").dataset.editId=t.dataset.id; return; }
+  if(a==="del-date"){ tombstone(t.dataset.id); state.importantDates=state.importantDates.filter(x=>x.id!==t.dataset.id); save(); renderView(); return; }
 
   if(a==="add-timetable"){ openModal(timetableFormHtml()); return; }
   if(a==="edit-timetable"){ openModal(timetableFormHtml(state.timetable.find(x=>x.id===t.dataset.id))); document.getElementById("timetable-form").dataset.editId=t.dataset.id; return; }
@@ -2029,13 +2473,15 @@ function timetableFormHtml(e){
   </form>`;
 }
 function semesterFormHtml(s){
-  s = s || {name:'', totalWeeks:17, currentWeek:1};
+  s = s || {name:'', totalWeeks:17, currentWeek:1, startDate:''};
   return `<div class="modal-head"><h3>${s.id?'Edit Semester':'New Semester'}</h3><button class="icon-btn" data-action="close-modal">${icon('close')}</button></div>
   <form id="semester-form">
     <div class="field"><label>Semester name</label><input required name="name" value="${escapeHtml(s.name)}" placeholder="Semester 2"></div>
+    <div class="field"><label>Semester start date (optional)</label><input type="date" name="startDate" value="${s.startDate||''}"></div>
+    <p style="font-size:0.78rem; color:var(--text-faint); margin:-8px 0 14px;">Set this once and the current week calculates itself. Leave blank to keep setting the week manually below.</p>
     <div class="field-row">
       <div class="field"><label>Total weeks</label><input type="number" min="1" name="totalWeeks" value="${s.totalWeeks}"></div>
-      <div class="field"><label>Current week</label><input type="number" min="1" name="currentWeek" value="${s.currentWeek}"></div>
+      <div class="field"><label>Current week ${s.startDate?'(auto)':''}</label><input type="number" min="1" name="currentWeek" value="${s.currentWeek}" ${s.startDate?'disabled':''}></div>
     </div>
     <div class="modal-actions"><button type="button" class="btn secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn">Save</button></div>
   </form>`;
@@ -2050,7 +2496,7 @@ document.getElementById("modal-backdrop").addEventListener("submit", e=>{
   if(e.target.id==="semester-form" && !e.target.dataset.editId){
     e.preventDefault();
     const f=new FormData(e.target);
-    const ns={id:uid(), name:f.get("name"), totalWeeks:parseInt(f.get("totalWeeks"))||17, currentWeek:parseInt(f.get("currentWeek"))||1, archived:false, createdAt:Date.now()};
+    const ns={id:uid(), name:f.get("name"), totalWeeks:parseInt(f.get("totalWeeks"))||17, currentWeek:parseInt(f.get("currentWeek"))||1, startDate:f.get("startDate")||null, archived:false, createdAt:Date.now(), updatedAt:Date.now()};
     state.semesters.push(ns); state.activeSemesterId=ns.id;
     save(); closeModal(); renderView(); toast("New semester created");
   }
@@ -2122,9 +2568,38 @@ async function openReader(pdfId){
   }catch(err){
     toast("Couldn't open this PDF"); closeReader(); return;
   }
+  rec.lastOpenedAt = Date.now();
+  reader.isMobile = isMobileView();
+  const resume = rec.lastPage && rec.lastPage>1 && rec.lastPage<=reader.doc.numPages;
+  reader.spread = resume ? (reader.isMobile ? rec.lastPage-1 : spreadForPage(rec.lastPage)) : 0;
   await renderThumbs(rec);
   await renderSpread();
   bindReaderEvents(rec);
+  if(resume) offerContinueReading(rec);
+}
+function offerContinueReading(rec){
+  const el = document.createElement("div");
+  el.className = "continue-toast";
+  el.innerHTML = `<span>Resumed from page ${rec.lastPage}</span><button data-action="restart-pdf">Start from beginning</button>`;
+  document.getElementById("reader-root").appendChild(el);
+  el.querySelector("[data-action='restart-pdf']").addEventListener("click", ()=>{
+    reader.spread = 0;
+    renderSpread();
+    el.remove();
+  });
+  setTimeout(()=> el.classList.add("show"), 10);
+  setTimeout(()=> el.remove(), 6000);
+}
+let pdfProgressSaveTimer = null;
+function trackReadingProgress(){
+  const rec = state.pdfs.find(p=>p.id===reader.pdfId);
+  if(!rec || !reader.doc) return;
+  const page = pagesForSpread(reader.spread)[0] || 1;
+  rec.lastPage = page;
+  rec.readingProgress = Math.min(100, Math.round((page/reader.doc.numPages)*100));
+  rec.lastOpenedAt = Date.now();
+  clearTimeout(pdfProgressSaveTimer);
+  pdfProgressSaveTimer = setTimeout(()=>{ rec.updatedAt=Date.now(); save(); }, 1200);
 }
 function openMissingPdfModal(rec){
   openModal(`
@@ -2150,6 +2625,7 @@ function attachPdfToDevice(pdfId){
   input.click();
 }
 function closeReader(){
+  if(pdfProgressSaveTimer){ clearTimeout(pdfProgressSaveTimer); pdfProgressSaveTimer=null; save(); } // flush any pending page-progress write
   document.getElementById("reader-root").innerHTML="";
   document.getElementById("reader-root").style.display="none";
   if(reader && reader.objectUrl){ URL.revokeObjectURL(reader.objectUrl); reader.objectUrl=null; }
@@ -2233,6 +2709,7 @@ async function renderSpread(dir){
   document.querySelectorAll(".thumb-ph").forEach(el=>el.classList.toggle("active", pages.includes(parseInt(el.dataset.page))));
   const activeThumb = document.querySelector(".thumb-ph.active");
   if(activeThumb) activeThumb.scrollIntoView({inline:"center", block:"nearest"});
+  trackReadingProgress();
 }
 function maxSpread(){
   if(!reader.doc) return 0;
@@ -2324,12 +2801,14 @@ document.getElementById("theme-toggle").addEventListener("click", ()=>{
 function renderView(){
   renderNav();
   if(currentView==="dashboard") renderDashboard();
+  else if(currentView==="today") renderToday();
   else if(currentView==="subjects") renderSubjects();
   else if(currentView==="subject-detail") renderSubjectDetail(currentParams.id);
   else if(currentView==="notes") renderNotes();
   else if(currentView==="planner") renderPlanner();
   else if(currentView==="assignments") renderAssignments();
   else if(currentView==="revision") renderRevision();
+  else if(currentView==="dates") renderImportantDates();
   else if(currentView==="progress") renderProgress();
   else if(currentView==="timetable") renderTimetable();
   else if(currentView==="settings") renderSettings();
@@ -2344,6 +2823,7 @@ renderView();
 refreshLocalPdfIds().then(migrateLegacyPdfBlobs).then(renderView).catch(()=>{});
 
 })();
+
 
 </script>
 </body>
