@@ -384,6 +384,7 @@ button:focus-visible, .subject-card:focus-visible, .note-card:focus-visible, .pd
 
 /* ===== BOOK READER ===== */
 #reader-view{position:fixed; inset:0; background:#12160F; z-index:500; display:flex; flex-direction:column;}
+#reader-view.is-fullscreen .thumb-strip{display:none;}
 :root[data-theme="light"] #reader-view.reader-light-chrome{background:#EFE9DA;}
 .reader-toolbar{display:flex; align-items:center; gap:8px; padding:10px 16px calc(10px + env(safe-area-inset-top,0px)) 16px; padding-top:calc(10px + env(safe-area-inset-top,0px)); background:rgba(18,22,15,0.92); color:#E7EDE3; flex-wrap:wrap;}
 .reader-toolbar .grow{flex:1;}
@@ -2627,10 +2628,12 @@ function attachPdfToDevice(pdfId){
 }
 function closeReader(){
   if(pdfProgressSaveTimer){ clearTimeout(pdfProgressSaveTimer); pdfProgressSaveTimer=null; save(); } // flush any pending page-progress write
+  if(document.fullscreenElement){ document.exitFullscreen?.(); }
   document.getElementById("reader-root").innerHTML="";
   document.getElementById("reader-root").style.display="none";
   if(reader && reader.objectUrl){ URL.revokeObjectURL(reader.objectUrl); reader.objectUrl=null; }
   document.removeEventListener("keydown", readerKeyHandler);
+  document.removeEventListener("fullscreenchange", readerFullscreenHandler);
 }
 function readerShellHtml(rec){
   return `
@@ -2755,6 +2758,11 @@ function readerKeyHandler(e){
   if(e.key==="ArrowRight") turn("next");
   if(e.key==="Escape") closeReader();
 }
+function readerFullscreenHandler(){
+  const el=document.getElementById("reader-view");
+  if(!el) return;
+  el.classList.toggle("is-fullscreen", !!document.fullscreenElement);
+}
 function bindReaderEvents(rec){
   document.addEventListener("keydown", readerKeyHandler);
   const root=document.getElementById("reader-root");
@@ -2767,6 +2775,7 @@ function bindReaderEvents(rec){
     const el=document.getElementById("reader-view");
     if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
   });
+  document.addEventListener("fullscreenchange", readerFullscreenHandler);
   root.querySelector('[data-r="bookmark"]').addEventListener("click", ()=>{
     const page = pagesForSpread(reader.spread)[0];
     const rec2 = state.pdfs.find(p=>p.id===reader.pdfId);
