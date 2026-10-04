@@ -21,7 +21,7 @@
  * immediately (after one reload) rather than a stale version sticking
  * around silently.
  */
-const CACHE_NAME = "notelylog-shell-v3";
+const CACHE_NAME = "notelylog-shell-v4";
 const APP_SHELL = [
   "./",
   "./index.html"
